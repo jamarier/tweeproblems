@@ -1,0 +1,53 @@
+::StoryTitle
+
+Testing
+
+:: StoryData
+{
+	"ifid": "79FC17B8-8C95-4946-964F-E97A80576B5F"
+}
+
+:: UserScript [script]
+
+/* Import the mathjax library. */
+importScripts("https://polyfill.io/v3/polyfill.min.js?features=es6");
+importScripts("https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js");
+
+
+
+:: Start
+
+Start text
+
+/*[img[small.jpg]]*/
+
+When \(a \ne 0\), there are two solutions to \(ax^2 + bx + c = 0\) and they are
+  $$$$x = {-b \pm \sqrt{b^2-4ac} \over 2a}.$$$$
+
+Second option:
+
+"""
+
+When \(a \ne 0\), there are two solutions to \(ax^2 + bx + c = 0\) and they are
+  \[x = {-b \pm \sqrt{b^2-4ac} \over 2a}.\]
+
+"""
+
+Options?
+
+[[Go 1 -> one]]
+
+[[Go 0 -> Start]]
+
+[[Go 2 -> two]]
+
+:: one
+this is one
+
+Restart: [[Start]]
+
+:: two
+this is two
+
+Restart: [[Start]]
+
