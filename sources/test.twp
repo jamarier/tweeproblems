@@ -1,0 +1,57 @@
+Ejercicio 1.1
+
+La ley de Ohm.
+
+[img[small.jpg]]
+
+Sea un resistor de ((R_n=100 kohm)). Se (I=10 mA) alimenta 
+con una tensión ((V=10V)).
+
+Otros datos: 
+
+* ((R_1=10e3 ohm))
+* ((R_2=20ohm))
+
+
+-X Este cálculo es erróneo | R = V
+-> Otro cálculo correcto | R = leyohm(V=V,R=R_n)
+-> Calcular la Intensidad que pasa por la resistencia. | I = leyohm(V=V,R=R_n)
+---
+
+Ejercicio 1.2
+
+. ((caramelos=10)) y ((niños=10)) ¿Cuántos caramelos tocan por niño?
+
+Una vez calculado 
+
+
+When \(a \ne 0\), there are two solutions to \(ax^2 + bx + c = 0\) and they are
+  $$$$x = {-b \pm \sqrt{b^2-4ac} \over 2a}.$$$$
+
+Second option:
+
+"""
+
+When \(a \ne 0\), there are two solutions to \(ax^2 + bx + c = 0\) and they are
+  \[x = {-b \pm \sqrt{b^2-4ac} \over 2a}.\]
+
+"""
+
+Options?
+
+[[Go 1 -> one]]
+
+[[Go 0 -> Start]]
+
+[[Go 2 -> two]]
+
+:: one
+this is one
+
+Restart: [[Start]]
+
+:: two
+this is two
+
+Restart: [[Start]]
+
