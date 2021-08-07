@@ -57,8 +57,8 @@ lazy_static! {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Magnitude {
-    value: ValueType,
-    unit: String,
+    pub value: ValueType,
+    pub unit: String,
 }
 
 impl Magnitude {

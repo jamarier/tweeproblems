@@ -9,31 +9,37 @@ Datos previos:
 * {{.V=10V}}
 * {{.R_n=123ohm}}
 * {{.10V}}
+* {{,R_m=R_n}}
 
 Escape de paréntesis: 
-!* si se quiere escapar un corchete se usa \{ y \}.
+!!* si se quiere escapar un corchete se usa \{ y \}.
 
 Opciones de formato: 
 
-!* ! línea empezando con ! {en la primera columna} se copia verbatim a la salida
+!!* ! línea empezando con ! {en la primera columna} se copia verbatim a la salida
+* ! línea empezando con ! {en la primera columna} se copia verbatim a la salida
 
-!* {{.R_n}} muestra la magnitud asociada a dicha variable
-!* {{,R_n}} muestra el razonamiento asociado a dicha variable {la expresión de cálculo}
-!* {{;R_n}} muestra el razonamiento asociado y su magnitud asociada
+!!* {{.R_n}} {{.R_m}} muestra la magnitud asociada a dicha variable
+* {{.R_n}} {{.R_m}} muestra la magnitud asociada a dicha variable
 
-!Si hay un igual, antes de mostrar lo que corresponda, se asigna la variable
-!* {{.R_n=123ohm}} asigna variable y muestra la magnitud
+!!* {{,R_n}} {{,R_m}} muestra el razonamiento asociado a dicha variable {la expresión de cálculo}
+* {{,R_n}} {{,R_m}} muestra el razonamiento asociado a dicha variable {la expresión de cálculo}
+
+!!* {{;R_n}} {{;R_m}} muestra el razonamiento asociado y su magnitud asociada
+* {{;R_n}} {{;R_m}} muestra el razonamiento asociado y su magnitud asociada
+
+!!* {{!R_n}} {{!R_m}} inyectan el valor sin unidades en el twee
+* {{!R_n}} {{!R_m}} inyectan el valor sin unidades en el twee
+
+Si hay un igual, antes de mostrar lo que corresponda, se asigna la variable
+!!* {{.R_n=123ohm}} asigna variable y muestra la magnitud
 * {{.R_n=123ohm}} asigna variable y muestra la magnitud
-!* {{.I=leyohm<V=V,R=R_n>}} asigna variable y muestra magnitud
-!
-!Si se hacen dos asignaciones a la misma variable, tienen que dar la misma magnitud o hay error
+!!* {{.I=leyohm<V=V,R=R_n>}} asigna variable y muestra magnitud
 
-!* {{?R_n=123ohm}} asigna la variable pero no muestra la magnitud
-!* {{"I=leyohm<V=V,R=R_n>}} muestra la expresión pero ni la calcula ni la almacena.
-
-!Las admiraciones inyectan el valor {sin unidades} para el fichero twee
-!* {{!R_n}}
-
+!!Si se hacen dos asignaciones a la misma variable, tienen que dar la misma magnitud o hay error
+!!
+!!* -> {{_R_n=123ohm}} <- asigna la variable pero no muestra la magnitud
+* -> {{_R_n=123ohm}} <- asigna la variable pero no muestra la magnitud
 
 
 Sea un resistor de {{.R_{n2}=100 kohm}}. Se {\{I=10 mA}\} alimenta 

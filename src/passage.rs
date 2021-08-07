@@ -125,6 +125,9 @@ impl Passage {
             };
             gates.push(last_gate);
         }
+
+        println!("Passage text: {}", lines_text.join("\n"));
+
         Passage {
             text: lines_text.join("\n"),
             options: gates,
@@ -198,7 +201,7 @@ fn process_line(
                             panic!("Variable: {:?} has value: {:?} in global dictionary but {:?} is new value", var_name, value_dict, value);
                         }
                     }
-                    None => {global_vars.insert(var_name, value);}
+                    None => {global_vars.insert(var_name.clone(), value.clone());}
                 }
             } else {
                 match local_vars.get(&var_name) {
@@ -207,8 +210,47 @@ fn process_line(
                             panic!("Variable: {:?} has value: {:?} in local dictionary but {:?} is new value", var_name, value_dict, value);
                         }
                     }
-                    None => {local_vars.insert(var_name, value);}
+                    None => {local_vars.insert(var_name.clone(), value.clone());}
                 }
+            }
+        }
+
+        // printing/inyecting
+        match &cap[1] {
+            "." => {
+                output_vec.push(String::from("\\("));
+                if !var_name.is_empty() {
+                    output_vec.push(format!("{}=",var_name));
+                }
+                output_vec.push(value.magnitude());
+                output_vec.push(String::from("\\)"));
+            }
+            "," => {
+                output_vec.push(String::from("\\("));
+                if !var_name.is_empty() {
+                    output_vec.push(format!("{}=",var_name));
+                }
+                output_vec.push(value.desc());
+                output_vec.push(String::from("\\)"));
+            }
+            ";" => {
+                output_vec.push(String::from("\\("));
+                if !var_name.is_empty() {
+                    output_vec.push(format!("{}=",var_name));
+                }
+                output_vec.push(value.desc_magnitude());
+                output_vec.push(String::from("\\)"));
+            }
+            "!" => {
+                if !var_name.is_empty() {
+                    output_vec.push(format!("{}=",var_name));
+                }
+                output_vec.push(value.value());
+            }
+            "_" => {
+            }
+            _ => {
+                println!("desconocido");
             }
         }
 
