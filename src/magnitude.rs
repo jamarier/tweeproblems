@@ -65,11 +65,13 @@ impl Magnitude {
     // try to process string into Magnitude.
     pub fn get(string: &str) -> Option<Self> {
         if let Some(cap) = RE_MAGNITUDE.captures(string) {
-            Some(Magnitude::new(cap[1].parse::<ValueType>().unwrap(), cap[3].to_string() ))
+            Some(Magnitude::new(
+                cap[1].parse::<ValueType>().unwrap(),
+                cap[3].to_string(),
+            ))
         } else {
             None
         }
-        
     }
 
     pub fn new(value: ValueType, unit: String) -> Self {

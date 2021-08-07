@@ -1,8 +1,8 @@
 // Expressions
 //
 
-use lazy_static::lazy_static;
-use regex::Regex;
+//use lazy_static::lazy_static;
+//use regex::Regex;
 use std::collections::HashMap;
 
 use crate::magnitude::Magnitude;
@@ -41,37 +41,37 @@ impl Expression {
 
         // magnitude?
         if let Some(value) = Magnitude::get(string) {
-            return Expression::Magnitude(value)
+            return Expression::Magnitude(value);
         }
 
         // I don't know
-        panic!("Don't know how to build Expression from: {:?}",string)
+        panic!("Don't know how to build Expression from: {:?}", string)
     }
 
     pub fn value(&self) -> String {
         match self {
-            Expression::Variable{value,..} => value.value(),
-            Expression::Magnitude(value) => format!("{}",value.value),
+            Expression::Variable { value, .. } => value.value(),
+            Expression::Magnitude(value) => format!("{}", value.value),
         }
     }
 
     pub fn magnitude(&self) -> String {
         match self {
-            Expression::Variable{value,..} => value.magnitude(),
-            Expression::Magnitude(value) => format!("{}",value),
+            Expression::Variable { value, .. } => value.magnitude(),
+            Expression::Magnitude(value) => format!("{}", value),
         }
     }
 
     pub fn desc(&self) -> String {
         match self {
-            Expression::Variable{name, ..} => name.clone(),
-            Expression::Magnitude(value) => format!("{}",value),
+            Expression::Variable { name, .. } => name.clone(),
+            Expression::Magnitude(value) => format!("{}", value),
         }
     }
     pub fn desc_magnitude(&self) -> String {
         match self {
-            Expression::Variable{name, value} => format!("{}={}",name, value.desc_magnitude()),
-            Expression::Magnitude(value) => format!("{}",value),
+            Expression::Variable { name, value } => format!("{}={}", name, value.desc_magnitude()),
+            Expression::Magnitude(value) => format!("{}", value),
         }
     }
 }

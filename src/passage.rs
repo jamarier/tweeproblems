@@ -186,9 +186,9 @@ fn process_line(
         println!("Expression: {:?}", value);
 
         // binding
-        let var_name : String = match cap.get(3) {
+        let var_name: String = match cap.get(3) {
             Some(var) => decode_line(var.as_str()),
-            None => String::new()
+            None => String::new(),
         };
 
         if !var_name.is_empty() {
@@ -201,7 +201,9 @@ fn process_line(
                             panic!("Variable: {:?} has value: {:?} in global dictionary but {:?} is new value", var_name, value_dict, value);
                         }
                     }
-                    None => {global_vars.insert(var_name.clone(), value.clone());}
+                    None => {
+                        global_vars.insert(var_name.clone(), value.clone());
+                    }
                 }
             } else {
                 match local_vars.get(&var_name) {
@@ -210,7 +212,9 @@ fn process_line(
                             panic!("Variable: {:?} has value: {:?} in local dictionary but {:?} is new value", var_name, value_dict, value);
                         }
                     }
-                    None => {local_vars.insert(var_name.clone(), value.clone());}
+                    None => {
+                        local_vars.insert(var_name.clone(), value.clone());
+                    }
                 }
             }
         }
@@ -220,7 +224,7 @@ fn process_line(
             "." => {
                 output_vec.push(String::from("\\("));
                 if !var_name.is_empty() {
-                    output_vec.push(format!("{}=",var_name));
+                    output_vec.push(format!("{}=", var_name));
                 }
                 output_vec.push(value.magnitude());
                 output_vec.push(String::from("\\)"));
@@ -228,7 +232,7 @@ fn process_line(
             "," => {
                 output_vec.push(String::from("\\("));
                 if !var_name.is_empty() {
-                    output_vec.push(format!("{}=",var_name));
+                    output_vec.push(format!("{}=", var_name));
                 }
                 output_vec.push(value.desc());
                 output_vec.push(String::from("\\)"));
@@ -236,19 +240,18 @@ fn process_line(
             ";" => {
                 output_vec.push(String::from("\\("));
                 if !var_name.is_empty() {
-                    output_vec.push(format!("{}=",var_name));
+                    output_vec.push(format!("{}=", var_name));
                 }
                 output_vec.push(value.desc_magnitude());
                 output_vec.push(String::from("\\)"));
             }
             "!" => {
                 if !var_name.is_empty() {
-                    output_vec.push(format!("{}=",var_name));
+                    output_vec.push(format!("{}=", var_name));
                 }
                 output_vec.push(value.value());
             }
-            "_" => {
-            }
+            "_" => {}
             _ => {
                 println!("desconocido");
             }
