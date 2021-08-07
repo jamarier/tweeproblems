@@ -11,14 +11,31 @@
 
 use lazy_static::lazy_static;
 use maplit::hashmap;
+use regex::Regex;
 use std::collections::HashMap;
 use std::fmt;
+
+// TYPES
+type ValueType = f32;
 
 // TABLES
 
 lazy_static! {
+// Regex
+    static ref RE_MAGNITUDE: Regex =
+        Regex::new(r"(?x)              # extended mode
+                   (\d+                # value: float
+                    \.?
+                    (e\d+)?
+                   )
+                   \s*
+                   (.*)                # units
+                   \s*
+                   ").unwrap();
+
+
 // Factors
-            static ref FACTORS : HashMap<char,f32> = hashmap!{
+            static ref FACTORS : HashMap<char,ValueType> = hashmap!{
                 'T' => 1e12,
                 'G' => 1e9,
                 'M' => 1e6,
@@ -35,16 +52,27 @@ lazy_static! {
             static ref UNITS: HashMap<&'static str,&'static str> = hashmap!{
                 "ohm" => "\\Omega",
             };
+
         }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Magnitude {
-    value: f32,
+    value: ValueType,
     unit: String,
 }
 
 impl Magnitude {
-    pub fn new(value: f32, unit: String) -> Self {
+    // try to process string into Magnitude.
+    pub fn get(string: &str) -> Option<Self> {
+        if let Some(cap) = RE_MAGNITUDE.captures(string) {
+            Some(Magnitude::new(cap[1].parse::<ValueType>().unwrap(), cap[3].to_string() ))
+        } else {
+            None
+        }
+        
+    }
+
+    pub fn new(value: ValueType, unit: String) -> Self {
         (Magnitude { value, unit }).normalize()
     }
 

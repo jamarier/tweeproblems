@@ -6,49 +6,62 @@ La ley de Ohm.
 
 Datos previos:
 
-* ((V=10V))
-* ((R_n=123ohm))
+* {{.V=10V}}
+* {{.R_n=123ohm}}
+* {{.10V}}
+
+Escape de paréntesis: 
+!* si se quiere escapar un corchete se usa \{ y \}.
 
 Opciones de formato: 
 
-* ! línea empezando con ! (en la primera columna) se copia verbatim a la salida
+!* ! línea empezando con ! {en la primera columna} se copia verbatim a la salida
 
-* ((R_n)) muestra la magnitud asociada a dicha variable
-* (((R_n))) muestra el razonamiento asociado a dicha variable (la expresión de cálculo)
-* ((((R_n)))) muestra el razonamiento asociado y su magnitud asociada
+!* {{.R_n}} muestra la magnitud asociada a dicha variable
+!* {{,R_n}} muestra el razonamiento asociado a dicha variable {la expresión de cálculo}
+!* {{;R_n}} muestra el razonamiento asociado y su magnitud asociada
 
-Si hay un igual, antes de mostrar lo que corresponda, se asigna la variable
-* ((R_n=123ohm)) asigna variable y muestra la magnitud
-* ((I=leyohm<V=V,R=R_n>)) asigna variable y muestra magnitud
+!Si hay un igual, antes de mostrar lo que corresponda, se asigna la variable
+!* {{.R_n=123ohm}} asigna variable y muestra la magnitud
+* {{.R_n=123ohm}} asigna variable y muestra la magnitud
+!* {{.I=leyohm<V=V,R=R_n>}} asigna variable y muestra magnitud
+!
+!Si se hacen dos asignaciones a la misma variable, tienen que dar la misma magnitud o hay error
 
-Si se hacen dos asignaciones a la misma variable, tienen que dar la misma magnitud o hay error
+!* {{?R_n=123ohm}} asigna la variable pero no muestra la magnitud
+!* {{"I=leyohm<V=V,R=R_n>}} muestra la expresión pero ni la calcula ni la almacena.
 
-Las llaves se usan para inhibir
-* {{R_n=123ohm}} asigna la variable pero no muestra la magnitud
-* {{{I=leyohm<V=V,R=R_n>}}} muestra la expresión pero ni la calcula ni la almacena.
-
-Las admiraciones inyectan el valor (sin unidades) para el fichero twee
-* !!R_n!!
+!Las admiraciones inyectan el valor {sin unidades} para el fichero twee
+!* {{!R_n}}
 
 
 
-Sea un resistor de ((R_n=100 kohm)). Se (I=10 mA) alimenta 
-con una tensión ((V=10V)).
+Sea un resistor de {{.R_{n2}=100 kohm}}. Se {\{I=10 mA}\} alimenta 
+con una tensión {{.V=10V}}.
 
 Otros datos: 
 
-* ((R_1=10e3 ohm))
-* ((R_2=20ohm))
+* {{.R_1=10e3 ohm}}
+* {{.R_2=20ohm}}
 
 
--X Este cálculo es erróneo | R = V
--> Otro cálculo correcto | R = leyohm(V=V,R=R_n)
--> Calcular la Intensidad que pasa por la resistencia. | I = leyohm(V=V,R=R_n)
+-X Este cálculo es erróneo 
+
+R = V
+
+-> Otro cálculo correcto 
+
+R = leyohm<V=V,R=R_n>
+
+-> Calcular la Intensidad que pasa por la resistencia. 
+
+I = leyohm<V=V,R=R_n>
+
 ---
 
 Ejercicio 1.2
 
-. ((caramelos=10)) y ((niños=10)) ¿Cuántos caramelos tocan por niño?
+. {.caramelos=10} y {.niños=10} ¿Cuántos caramelos tocan por niño?
 
 Una vez calculado 
 

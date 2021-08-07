@@ -1,16 +1,16 @@
 use anyhow::{bail, Result};
 use clap::{App, Arg};
-use lazy_static::lazy_static;
-use regex::Regex;
-use std::collections::HashMap;
 use std::fs::{write, File};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
+mod expression;
 mod magnitude;
+mod passage;
 
-use crate::magnitude::Magnitude;
+use crate::expression::DictVariables;
+use crate::passage::Passage;
 
 fn main() -> Result<()> {
     let args = App::new("TwineProblems")
@@ -32,64 +32,22 @@ fn main() -> Result<()> {
     println!("output file: {:?}", output_file);
 
     // Open the file in read-only mode (ignoring errors).
-    let mut lines = open_input_file(input_file)?;
+    let mut line_iterator = open_input_file(input_file)?;
 
-    let title = locate_title(&mut lines)?;
+    let title = locate_title(&mut line_iterator)?;
 
-    let mut output_lines = preface(&title);
+    let output_lines = preface(&title);
 
-    let mut _current_level = 0;
-    let mut _current_passage = Vec::<String>::new();
+    let mut variables: DictVariables = DictVariables::new();
 
-    let mut variables: HashMap<String, Magnitude> = HashMap::new();
-
-    for line in lines {
-        let line = extract_variables(line?, &mut variables);
-        output_lines.push(line);
-    }
+    let passage = Passage::read_passage(line_iterator, &mut variables);
+    println!("passage: {:?}", passage);
 
     println!("variables detectadas: {:?}", variables);
 
     write(output_file, output_lines.join("\n"))?;
 
     Ok(())
-}
-
-fn extract_variables(line: String, variables: &mut HashMap<String, Magnitude>) -> String {
-    lazy_static! {
-        static ref RE: Regex =
-            Regex::new(r"\(\(\s*([^=]+?)\s*=\s*(\d+\.?\d*(e\d+)?)\s*([^)]*)\s*\)\)").unwrap();
-    }
-
-    let mut out_vec = Vec::<String>::new();
-
-    // search for inline code
-    let mut it: usize = 0;
-    for cap in RE.captures_iter(&line) {
-        let m = cap.get(0).unwrap();
-        out_vec.push(line[it..m.start()].to_owned());
-
-        // variable name and value
-        let var_name : String = (&cap[1]).to_string();
-        let var_mag : Magnitude = Magnitude::new(cap[2].parse::<f32>().unwrap(), cap[4].to_owned());
-
-        out_vec.push(format!("\\({}={}\\)", var_name, var_mag));
-
-        // setting variable
-        variables.insert(var_name, var_mag);
-
-        it = m.end();
-    }
-    if it < line.len() {
-        out_vec.push(line[it..].to_owned());
-    }
-
-    // no match. all in_line into output
-    if out_vec.is_empty() {
-        out_vec.push(line);
-    }
-
-    out_vec.join("")
 }
 
 fn check_input_file(input: &Path) -> Result<&Path> {
