@@ -23,12 +23,11 @@ pub enum Expression {
 
 impl Expression {
     pub fn from(string: &str) -> Self {
-        let items = string.split(" ");
+        let items = string.split(' ');
         let mut stack: Vec<Expression> = vec![];
 
         for current in items {
-
-            if current == "" {
+            if current.is_empty() {
             } else if let Some(value) = Magnitude::get(current) {
                 stack.push(Expression::Magnitude(value));
             } else if &current[0..1] == ":" {
@@ -43,7 +42,7 @@ impl Expression {
                     Some(v) => Box::new(v),
                     None => panic!("Empty stack"),
                 };
-                let mut unit : &str = &current[1..];
+                let mut unit: &str = &current[1..];
                 if unit == "@" {
                     unit = "";
                 }
@@ -74,12 +73,12 @@ impl Expression {
 
     pub fn show(&self) -> String {
         match self {
-            Expression::Magnitude(magnitude) => format!("{}",magnitude),
+            Expression::Magnitude(magnitude) => format!("{}", magnitude),
             Expression::Variable(string) => string.to_string(),
-            Expression::Bind(_name,_value) => String::new(), //format!(" {}:{} ", name, value.show()),
+            Expression::Bind(_name, _value) => String::new(), //format!(" {}:{} ", name, value.show()),
             Expression::Add(items) => {
                 let mut output = String::new();
-                let mut iterator = items.into_iter();
+                let mut iterator = items.iter();
                 let first = iterator.next().unwrap();
                 output.push_str(&first.show());
                 for item in iterator {
@@ -92,20 +91,23 @@ impl Expression {
                 }
                 output
             }
-            Expression::Neg(expr) => format!(" -{}",expr.show()),
-            Expression::Prod(items) => 
-                items.into_iter().map(|it|{
-                    match it {
-                    Expression::Add(_) => format!("({})",it.show()),
-                    _ => it.show()
-                    }
-                }).collect::<Vec<String>>().join(" \\cdot "),
-            Expression::Div(items) => format!(" \\frac{{{}}}{{{}}} ",items[0].show(),items[1].show()),
-            Expression::Unit(_name,value) => value.show(),
+            Expression::Neg(expr) => format!(" -{}", expr.show()),
+            Expression::Prod(items) => items
+                .iter()
+                .map(|it| match it {
+                    Expression::Add(_) => format!("({})", it.show()),
+                    _ => it.show(),
+                })
+                .collect::<Vec<String>>()
+                .join(" \\cdot "),
+            Expression::Div(items) => {
+                format!(" \\frac{{{}}}{{{}}} ", items[0].show(), items[1].show())
+            }
+            Expression::Unit(_name, value) => value.show(),
         }
     }
 
-    pub fn value(&self, global_dict : &DictVariables, local_dict: &DictVariables) -> Magnitude {
+    pub fn value(&self, global_dict: &DictVariables, local_dict: &DictVariables) -> Magnitude {
         match self {
             Expression::Magnitude(mag) => mag.clone(),
             Expression::Variable(name) => {
@@ -119,10 +121,10 @@ impl Expression {
             }
             Expression::Bind(_, expr) => expr.value(global_dict, local_dict),
             Expression::Add(operands) => {
-                let mut result = Magnitude::new(0.0,String::from("¿?"));
+                let mut result = Magnitude::new(0.0, String::from("¿?"));
 
                 for op in operands {
-                    let mag = op.value(global_dict,local_dict);
+                    let mag = op.value(global_dict, local_dict);
                     if result.unit != "¿?" && result.unit != mag.unit {
                         panic!("Wrong units in {:?}.\n  Current result: {:?},\n  next operand:   {:?}\n",operands, result, mag);
                     }
@@ -135,15 +137,15 @@ impl Expression {
             }
             Expression::Neg(expr) => {
                 let mag = expr.value(global_dict, local_dict);
-                Magnitude::new(-1.0*mag.value, mag.unit )
+                Magnitude::new(-1.0 * mag.value, mag.unit)
             }
             Expression::Prod(operands) => {
-                let mut result = Magnitude::new(1.0,String::from("¿?"));
+                let mut result = Magnitude::new(1.0, String::from("¿?"));
 
                 for op in operands {
-                    let mag = op.value(global_dict,local_dict);
+                    let mag = op.value(global_dict, local_dict);
 
-                    result.value = result.value * mag.value;
+                    result.value *= mag.value;
                 }
 
                 result
@@ -152,12 +154,12 @@ impl Expression {
                 let num = operands[0].value(global_dict, local_dict);
                 let den = operands[1].value(global_dict, local_dict);
 
-                Magnitude::new( num.value/den.value, String::from("¿?"))
+                Magnitude::new(num.value / den.value, String::from("¿?"))
             }
-            Expression::Unit(unit,expr) => {
+            Expression::Unit(unit, expr) => {
                 let mut mag = expr.value(global_dict, local_dict);
                 if &mag.unit != "¿?" && &mag.unit != unit {
-                    panic!("Expression {:?} hasn't unit {}",expr,unit);
+                    panic!("Expression {:?} hasn't unit {}", expr, unit);
                 }
                 mag.unit = unit.to_owned();
                 mag
@@ -165,7 +167,6 @@ impl Expression {
         }
     }
 }
-
 
 //------------------------------------------------
 
@@ -194,16 +195,15 @@ fn operator2(f: fn(Expression, Expression) -> Expression, stack: &mut Vec<Expres
 //------------------------------------------------
 
 fn add_expression(op1: Expression, op2: Expression) -> Expression {
-
     // factors extraction
     let mut operands1 = match op1 {
         Expression::Add(operands) => operands,
-        _ => vec![op1]
+        _ => vec![op1],
     };
 
     let mut operands2 = match op2 {
         Expression::Add(operands) => operands,
-        _ => vec![op2]
+        _ => vec![op2],
     };
 
     // operation
@@ -219,44 +219,40 @@ fn add_expression(op1: Expression, op2: Expression) -> Expression {
 fn neg_expression(op1: Expression) -> Expression {
     match op1 {
         Expression::Bind(string, expr) => Expression::Bind(string, Box::new(neg_expression(*expr))),
-        Expression::Add(summands) => Expression::Add(
-            summands
-                .into_iter()
-                .map(|expr| neg_expression(expr))
-                .collect(),
-        ),
+        Expression::Add(summands) => {
+            Expression::Add(summands.into_iter().map(neg_expression).collect())
+        }
         Expression::Neg(expr) => *expr,
         _ => Expression::Neg(Box::new(op1)),
     }
 }
-
 
 fn prod_expression(op1: Expression, op2: Expression) -> Expression {
     let mut op1: Expression = op1;
     let mut op2: Expression = op2;
 
     // neg process
-    let mut neg : bool = false;
+    let mut neg: bool = false;
 
     if let Expression::Neg(expr) = op1 {
-        neg = !neg ;
+        neg = !neg;
         op1 = *expr;
     }
 
     if let Expression::Neg(expr) = op2 {
-        neg = !neg ;
+        neg = !neg;
         op2 = *expr;
     }
 
     // operands extraction
     let mut operands1 = match op1 {
         Expression::Prod(operands) => operands,
-        _ => vec![op1]
+        _ => vec![op1],
     };
 
     let mut operands2 = match op2 {
         Expression::Prod(operands) => operands,
-        _ => vec![op2]
+        _ => vec![op2],
     };
 
     // product
@@ -281,15 +277,15 @@ fn div_expression(op1: Expression, op2: Expression) -> Expression {
     let mut op2: Expression = op2;
 
     // neg process
-    let mut neg : bool = false;
+    let mut neg: bool = false;
 
     if let Expression::Neg(expr) = op1 {
-        neg = !neg ;
+        neg = !neg;
         op1 = *expr;
     }
 
     if let Expression::Neg(expr) = op2 {
-        neg = !neg ;
+        neg = !neg;
         op2 = *expr;
     }
 
@@ -314,14 +310,13 @@ fn div_expression(op1: Expression, op2: Expression) -> Expression {
     }
 
     // product
-    let num = prod_expression(num1,den2);
-    let den = prod_expression(den1,num2);
+    let num = prod_expression(num1, den2);
+    let den = prod_expression(den1, num2);
 
     // ending with sign
     if !neg {
-        Expression::Div(vec![num,den])
+        Expression::Div(vec![num, den])
     } else {
-        Expression::Neg(Box::new(Expression::Div(vec![num,den])))
+        Expression::Neg(Box::new(Expression::Div(vec![num, den])))
     }
 }
-

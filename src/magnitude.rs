@@ -65,14 +65,9 @@ impl Magnitude {
     // try to process string into Magnitude.
     pub fn get(string: &str) -> Option<Self> {
         let without_underline = string.replace("_", "");
-        if let Some(cap) = RE_MAGNITUDE.captures(&without_underline) {
-            Some(Magnitude::new(
-                cap[1].parse::<ValueType>().unwrap(),
-                cap[4].to_string(),
-            ))
-        } else {
-            None
-        }
+        RE_MAGNITUDE
+            .captures(&without_underline)
+            .map(|cap| Magnitude::new(cap[1].parse::<ValueType>().unwrap(), cap[4].to_string()))
     }
 
     pub fn new(value: ValueType, unit: String) -> Self {
@@ -81,7 +76,7 @@ impl Magnitude {
 
     // Normalize
     // TODO: add other factors
-    fn normalize(self: Self) -> Self {
+    fn normalize(self) -> Self {
         let mut value = self.value;
         let mut unit = self.unit;
 
@@ -90,7 +85,7 @@ impl Magnitude {
             let first = units[0];
             let second = units[1];
 
-            if (second >= 'a' && second <= 'z') || (second >= 'A' && second <= 'Z') {
+            if ('a'..='z').contains(&second) || ('A'..='Z').contains(&second) {
                 if let Some(factor) = FACTORS.get(&first) {
                     value *= factor;
                     unit = unit[1..].to_owned();
@@ -113,7 +108,7 @@ impl fmt::Display for Magnitude {
             new_unit = self.unit.clone();
         }
 
-        let sign_str : &str;
+        let sign_str: &str;
         let value_abs: ValueType;
 
         if self.value > 0.0 {
@@ -121,13 +116,13 @@ impl fmt::Display for Magnitude {
             value_abs = self.value;
         } else {
             sign_str = "-";
-            value_abs = -1.0* self.value;
+            value_abs = -1.0 * self.value;
         }
 
         // not very elegant but, works!
         for (factor_name, factor_value) in FACTORS.iter() {
             scaled = value_abs / factor_value;
-            if 1.0 <= scaled && scaled < 1e3 {
+            if (1.0..1e3).contains(&scaled) {
                 if *factor_name != '1' {
                     new_unit = format!("{}{}", factor_name, new_unit);
                 }
@@ -135,7 +130,7 @@ impl fmt::Display for Magnitude {
             }
         }
 
-        scaled = (scaled*100.0).round()/100.0;
+        scaled = (scaled * 100.0).round() / 100.0;
         if new_unit.is_empty() {
             write!(formatter, "{}{:}", sign_str, scaled)
         } else {

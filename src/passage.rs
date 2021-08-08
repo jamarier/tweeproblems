@@ -76,15 +76,14 @@ impl Passage {
             // End of passage
             if line_string.starts_with(END_PASSAGE) {
                 break;
-            } else
-            // Start of Gate
-            if line_string.starts_with(START_GOOD_GATE)
+            } else if line_string.starts_with(START_GOOD_GATE)
                 || line_string.starts_with(START_BAD_GATE)
             {
+                // Start of Gate
                 reading_gates = true;
 
                 // Create new gate
-                if lines_gate.len() > 0 {
+                if !lines_gate.is_empty() {
                     let last_gate = Gate {
                         title: gate_title,
                         text: lines_gate.join("\n"),
@@ -116,7 +115,7 @@ impl Passage {
         }
 
         // adding last gate
-        if lines_gate.len() > 0 {
+        if !lines_gate.is_empty() {
             let last_gate = Gate {
                 title: gate_title,
                 text: lines_gate.join("\n"),
@@ -219,7 +218,6 @@ fn process_line(
             }
         }
 
-        
         // printing/inyecting
         match &cap[1] {
             "." => {
@@ -227,7 +225,7 @@ fn process_line(
                 if !var_name.is_empty() {
                     output_vec.push(format!("{} = ", var_name));
                 }
-                output_vec.push(format!("{}",value.value(&global_vars,&local_vars)));
+                output_vec.push(format!("{}", value.value(&global_vars, &local_vars)));
                 output_vec.push(String::from(" \\)"));
             }
             "," => {
@@ -245,21 +243,20 @@ fn process_line(
                 }
                 output_vec.push(value.show());
                 output_vec.push(String::from(" = "));
-                output_vec.push(format!("{}",value.value(&global_vars,&local_vars)));
+                output_vec.push(format!("{}", value.value(&global_vars, &local_vars)));
                 output_vec.push(String::from(" \\)"));
             }
             "!" => {
                 if !var_name.is_empty() {
                     output_vec.push(format!("{}=", var_name));
                 }
-                output_vec.push(format!("{}",value.value(&global_vars,&local_vars).value));
+                output_vec.push(format!("{}", value.value(&global_vars, &local_vars).value));
             }
             "_" => {} // Make calculation but doesn't show anything
             _ => {
                 println!("Desconocido: \n\t{:?}", value);
             }
         }
-        
 
         it = m.end();
     }
