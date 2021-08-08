@@ -4,7 +4,7 @@
 //use maplit::hashmap;
 //use std::collections::HashMap;
 
-use crate::expression::Expression;
+//use crate::expression::Expression;
 
 /*pub trait Algebraic {
     fn build(stack: &mut Vec<Expression>);

@@ -181,7 +181,7 @@ fn process_line(
         let m = cap.get(0).unwrap();
         output_vec.push(decode_line(&line[it..m.start()]));
 
-        println!("\n\nprocessing: {:?}", cap);
+        println!("\n\nreading line: {:?}", &line);
         let value: Expression = Expression::from(&decode_line(&cap[4]));
         println!("Expression: {:?}", value);
 
@@ -219,56 +219,47 @@ fn process_line(
             }
         }
 
-        /*
+        
         // printing/inyecting
         match &cap[1] {
             "." => {
-                output_vec.push(String::from("\\("));
+                output_vec.push(String::from("\\( "));
                 if !var_name.is_empty() {
-                    output_vec.push(format!("{}=", var_name));
+                    output_vec.push(format!("{} = ", var_name));
                 }
-                output_vec.push(value.magnitude());
-                output_vec.push(String::from("\\)"));
+                output_vec.push(format!("{}",value.value(&global_vars,&local_vars)));
+                output_vec.push(String::from(" \\)"));
             }
             "," => {
-                output_vec.push(String::from("\\("));
+                output_vec.push(String::from("\\( "));
                 if !var_name.is_empty() {
-                    output_vec.push(format!("{}=", var_name));
+                    output_vec.push(format!("{} = ", var_name));
                 }
-                output_vec.push(value.desc());
-                output_vec.push(String::from("\\)"));
+                output_vec.push(value.show());
+                output_vec.push(String::from(" \\)"));
             }
             ";" => {
-                output_vec.push(String::from("\\("));
+                output_vec.push(String::from("\\( "));
                 if !var_name.is_empty() {
-                    output_vec.push(format!("{}=", var_name));
+                    output_vec.push(format!("{} = ", var_name));
                 }
-                output_vec.push(value.desc_magnitude());
-                output_vec.push(String::from("\\)"));
+                output_vec.push(value.show());
+                output_vec.push(String::from(" = "));
+                output_vec.push(format!("{}",value.value(&global_vars,&local_vars)));
+                output_vec.push(String::from(" \\)"));
             }
             "!" => {
                 if !var_name.is_empty() {
                     output_vec.push(format!("{}=", var_name));
                 }
-                output_vec.push(value.value());
+                output_vec.push(format!("{}",value.value(&global_vars,&local_vars).value));
             }
-            "_" => {}
+            "_" => {} // Make calculation but doesn't show anything
             _ => {
-                println!("desconocido");
+                println!("Desconocido: \n\t{:?}", value);
             }
         }
-        */
-
-        /*// variable name and value
-        let var_name: String = (&cap[1]).to_string();
-        let var_mag: Magnitude = Magnitude::new(cap[2].parse::<f32>().unwrap(), cap[4].to_owned());
-
-        out_vec.push(format!("\\({}={}\\)", var_name, var_mag));
-
-
-        // setting variable
-        variables.insert(var_name, var_mag);
-        */
+        
 
         it = m.end();
     }

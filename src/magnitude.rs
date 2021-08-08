@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 // TYPES
-type ValueType = f32;
+type ValueType = f64;
 
 // TABLES
 
@@ -24,12 +24,12 @@ lazy_static! {
 // Regex
     static ref RE_MAGNITUDE: Regex =
         Regex::new(r"(?x)              # extended mode
-                   (\d+                # value: float
-                    \.?
-                    (e\d+)?
+                   (\d+                # 1 value: float
+                    (\.\d+)?           # 2
+                    (e\d+)?            # 3
                    )
                    \s*
-                   (.*)                # units
+                   (.*)                # 4 units
                    \s*
                    ").unwrap();
 
@@ -68,7 +68,7 @@ impl Magnitude {
         if let Some(cap) = RE_MAGNITUDE.captures(&without_underline) {
             Some(Magnitude::new(
                 cap[1].parse::<ValueType>().unwrap(),
-                cap[3].to_string(),
+                cap[4].to_string(),
             ))
         } else {
             None
@@ -104,7 +104,7 @@ impl Magnitude {
 
 impl fmt::Display for Magnitude {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut scaled: f32 = 0.0;
+        let mut scaled: ValueType = 0.0;
         let mut new_unit: String;
 
         if let Some(pretty) = UNITS.get(&*self.unit) {
@@ -113,9 +113,20 @@ impl fmt::Display for Magnitude {
             new_unit = self.unit.clone();
         }
 
+        let sign_str : &str;
+        let value_abs: ValueType;
+
+        if self.value > 0.0 {
+            sign_str = "";
+            value_abs = self.value;
+        } else {
+            sign_str = "-";
+            value_abs = -1.0* self.value;
+        }
+
         // not very elegant but, works!
         for (factor_name, factor_value) in FACTORS.iter() {
-            scaled = self.value / factor_value;
+            scaled = value_abs / factor_value;
             if 1.0 <= scaled && scaled < 1e3 {
                 if *factor_name != '1' {
                     new_unit = format!("{}{}", factor_name, new_unit);
@@ -124,6 +135,11 @@ impl fmt::Display for Magnitude {
             }
         }
 
-        write!(formatter, "{}\\mathrm{{{}}}", scaled, new_unit)
+        scaled = (scaled*100.0).round()/100.0;
+        if new_unit.is_empty() {
+            write!(formatter, "{}{:}", sign_str, scaled)
+        } else {
+            write!(formatter, "{}{:}\\mathrm{{{}}}", sign_str, scaled, new_unit)
+        }
     }
 }
