@@ -181,8 +181,8 @@ fn process_line(
         let m = cap.get(0).unwrap();
         output_vec.push(decode_line(&line[it..m.start()]));
 
-        println!("processing: {:?}", cap);
-        let value: Expression = Expression::from(&decode_line(&cap[4]), global_vars, local_vars);
+        println!("\n\nprocessing: {:?}", cap);
+        let value: Expression = Expression::from(&decode_line(&cap[4]));
         println!("Expression: {:?}", value);
 
         // binding
@@ -219,6 +219,7 @@ fn process_line(
             }
         }
 
+        /*
         // printing/inyecting
         match &cap[1] {
             "." => {
@@ -256,6 +257,7 @@ fn process_line(
                 println!("desconocido");
             }
         }
+        */
 
         /*// variable name and value
         let var_name: String = (&cap[1]).to_string();

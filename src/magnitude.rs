@@ -64,7 +64,8 @@ pub struct Magnitude {
 impl Magnitude {
     // try to process string into Magnitude.
     pub fn get(string: &str) -> Option<Self> {
-        if let Some(cap) = RE_MAGNITUDE.captures(string) {
+        let without_underline = string.replace("_", "");
+        if let Some(cap) = RE_MAGNITUDE.captures(&without_underline) {
             Some(Magnitude::new(
                 cap[1].parse::<ValueType>().unwrap(),
                 cap[3].to_string(),

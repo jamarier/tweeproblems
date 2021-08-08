@@ -6,10 +6,35 @@ La ley de Ohm.
 
 Datos previos:
 
+! Formato '{{'
+! '.' para el dato, ',' para la definición, ';' para la definición y el dato
+! Variable '=' para asignarlo a la memoria
+! Expression (en RPN) 
+
 * {{.V=10V}}
 * {{.R_n=123ohm}}
 * {{.10V}}
 * {{,R_m=R_n}}
+* {{,10V 20V +}}
+* {{,1 2 3 + +}}
+* {{,1 2 + 3 + }}
+
+* {{,2 neg }}
+* {{.3 neg neg}}
+* {{.1 2 -}}
+* {{.1 2 + 3 4 + -}}
+
+* {{. 1 2 * }}
+* {{. 1 2 * 3 *}}
+* {{. 1 2 3 * *}}
+* {{. 1 2 * 3 4 * *}}
+* {{. 1 neg 2 *}}
+* {{. 1 2 neg * }}
+* {{. 1 2 * neg 3 4 * neg * }}
+* {{. 1 2 * 3 4 * neg * }}
+* {{. 1 2 * neg 3 4 * * }}
+
+---
 
 Escape de paréntesis: 
 !!* si se quiere escapar un corchete se usa \{ y \}.
@@ -42,12 +67,12 @@ Si hay un igual, antes de mostrar lo que corresponda, se asigna la variable
 * -> {{_R_n=123ohm}} <- asigna la variable pero no muestra la magnitud
 
 
-Sea un resistor de {{.R_{n2}=100 kohm}}. Se {\{I=10 mA}\} alimenta 
+Sea un resistor de {{.R_{n2}=100_kohm}}. Se {\{I=10_mA}\} alimenta 
 con una tensión {{.V=10V}}.
 
 Otros datos: 
 
-* {{.R_1=10e3 ohm}}
+* {{.R_1=10e3_ohm}}
 * {{.R_2=20ohm}}
 
 
