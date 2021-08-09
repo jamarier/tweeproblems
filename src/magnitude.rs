@@ -24,13 +24,13 @@ lazy_static! {
 // Regex
     static ref RE_MAGNITUDE: Regex =
         Regex::new(r"(?x)              # extended mode
+                   ^\s*
                    (\d+                # 1 value: float
                     (\.\d+)?           # 2
                     (e\d+)?            # 3
                    )
-                   \s*
                    (.*)                # 4 units
-                   \s*
+                   \s* $
                    ").unwrap();
 
 

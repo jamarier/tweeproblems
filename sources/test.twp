@@ -48,11 +48,27 @@ Datos previos:
 * {{; 1 2 neg / 3 4 / / }}
 * {{; 1 1.1 *  2 neg / 3 4 / / }}
 
-* {{; 1 2 * @ohm 10ohm + }}
-* {{; 1 2 * @@ 3 + }}
+* {{; 1 2 * ohm : 10ohm + }}
+* {{; 1 2 * :: 3 + }}
 
 * -> {{_R_3= 1V 2V + }} <- 
 * {{! 1ohm 2ohm + }}
+
+* {{; 1 2 + R_1 ! R_1 @ R_1 @ + }}
+
+* {{; 2V 3ohm ohm_law_VR.}}
+
+* {{; V_1= 2V }}
+* {{; R_1= 3ohm}}
+* {{; V_1 R_1 ohm_law_VR.}}
+
+* {{; R= 3ohm}}
+* {{; V R ohm_law_VR.}}
+
+!* {{; 1ohm 2 ohm_law_.RI}}
+
+* {{; 2ohm 3A ohm_law_.RI}}
+
 ---
 
 Escape de paréntesis: 

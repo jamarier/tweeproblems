@@ -3,8 +3,10 @@
 
 //use lazy_static::lazy_static;
 //use regex::Regex;
+use maplit::hashmap;
 use std::collections::HashMap;
 
+use crate::formulas::FORMULAS;
 use crate::magnitude::Magnitude;
 
 pub type DictVariables = HashMap<String, Expression>;
@@ -13,7 +15,6 @@ pub type DictVariables = HashMap<String, Expression>;
 pub enum Expression {
     Magnitude(Magnitude),
     Variable(String),
-    Bind(String, Box<Expression>),
     Add(Vec<Expression>),
     Neg(Box<Expression>),
     Prod(Vec<Expression>),
@@ -23,43 +24,53 @@ pub enum Expression {
 
 impl Expression {
     pub fn from(string: &str) -> Self {
-        let items = string.split(' ');
         let mut stack: Vec<Expression> = vec![];
+        let mut dictionary: DictVariables = hashmap! {};
+
+        Expression::inject(string, &mut stack, &mut dictionary)
+    }
+
+    fn inject(string: &str, stack: &mut Vec<Expression>, dictionary: &mut DictVariables) -> Self {
+        let string: String = string
+            .chars()
+            .map(|x| match x {
+                '\n' => ' ',
+                '\t' => ' ',
+                _ => x,
+            })
+            .collect();
+        let items = string.split(' ');
 
         for current in items {
+            if false && !current.is_empty() {
+                println!("stack: {:?}", stack);
+                println!("current: {:?}", current);
+            }
             if current.is_empty() {
             } else if let Some(value) = Magnitude::get(current) {
                 stack.push(Expression::Magnitude(value));
-            } else if &current[0..1] == ":" {
-                let value = match stack.pop() {
-                    Some(v) => Box::new(v),
-                    None => panic!("Empty stack"),
-                };
-                let name = &current[1..];
-                stack.push(Expression::Bind(name.to_string(), value));
-            } else if &current[0..1] == "@" {
-                let value = match stack.pop() {
-                    Some(v) => Box::new(v),
-                    None => panic!("Empty stack"),
-                };
-                let mut unit: &str = &current[1..];
-                if unit == "@" {
-                    unit = "";
-                }
-                stack.push(Expression::Unit(unit.to_string(), value));
             } else {
                 match current {
-                    "+" => operator2(add_expression, &mut stack),
-                    "neg" => operator1(neg_expression, &mut stack),
+                    "!" => to_dict(stack, dictionary),
+                    "@" => from_dict(stack, dictionary),
+                    ":" => operator2(units, stack),
+                    "::" => operator1(nounits, stack),
+                    "+" => operator2(add_expression, stack),
+                    "neg" => operator1(neg_expression, stack),
                     "-" => {
-                        operator1(neg_expression, &mut stack);
-                        operator2(add_expression, &mut stack);
+                        operator1(neg_expression, stack);
+                        operator2(add_expression, stack);
                     }
-                    "*" => operator2(prod_expression, &mut stack),
-                    "/" => operator2(div_expression, &mut stack),
-                    _ => {
-                        stack.push(Expression::Variable(current.to_string()));
-                    }
+                    "*" => operator2(prod_expression, stack),
+                    "/" => operator2(div_expression, stack),
+                    _ => match FORMULAS.get(current) {
+                        Some(f) => {
+                            Expression::inject(f, stack, dictionary);
+                        }
+                        None => {
+                            stack.push(Expression::Variable(current.to_string()));
+                        }
+                    },
                 }
             }
         }
@@ -75,7 +86,6 @@ impl Expression {
         match self {
             Expression::Magnitude(magnitude) => format!("{}", magnitude),
             Expression::Variable(string) => string.to_string(),
-            Expression::Bind(_name, _value) => String::new(), //format!(" {}:{} ", name, value.show()),
             Expression::Add(items) => {
                 let mut output = String::new();
                 let mut iterator = items.iter();
@@ -119,7 +129,6 @@ impl Expression {
                     panic!("Variable {} not in dictionaries", name)
                 }
             }
-            Expression::Bind(_, expr) => expr.value(global_dict, local_dict),
             Expression::Add(operands) => {
                 let mut result = Magnitude::new(0.0, String::from("¿?"));
 
@@ -171,6 +180,7 @@ impl Expression {
 //------------------------------------------------
 
 //------------------------------------------------
+//Operations over stack
 
 fn pop(stack: &mut Vec<Expression>) -> Expression {
     match stack.pop() {
@@ -193,6 +203,55 @@ fn operator2(f: fn(Expression, Expression) -> Expression, stack: &mut Vec<Expres
 }
 
 //------------------------------------------------
+//Operations over stack + dict
+
+fn to_dict(stack: &mut Vec<Expression>, dict: &mut DictVariables) {
+    let variable = pop(stack); // variable name
+    let content = pop(stack);
+
+    match variable {
+        Expression::Variable(name) => {
+            dict.insert(name, content);
+        }
+        _ => {
+            panic!("Inserting into dict without variable: {:?}", variable);
+        }
+    }
+}
+
+fn from_dict(stack: &mut Vec<Expression>, dict: &DictVariables) {
+    let variable = pop(stack); // variable name
+
+    match variable {
+        Expression::Variable(name) => match dict.get(&name) {
+            Some(v) => {
+                stack.push(v.clone());
+            }
+            None => {
+                panic!("Variable: {} is not in dictionary", name);
+            }
+        },
+        _ => {
+            panic!("Getting from dict without variable: {:?}", variable);
+        }
+    }
+}
+
+//------------------------------------------------
+//Operations over expressions
+
+fn units(value: Expression, unit: Expression) -> Expression {
+    let unit = match unit {
+        Expression::Variable(name) => name,
+        _ => panic!("Impossible to use assign unit"),
+    };
+
+    Expression::Unit(unit, Box::new(value))
+}
+
+fn nounits(value: Expression) -> Expression {
+    Expression::Unit(String::new(), Box::new(value))
+}
 
 fn add_expression(op1: Expression, op2: Expression) -> Expression {
     // factors extraction
@@ -218,7 +277,6 @@ fn add_expression(op1: Expression, op2: Expression) -> Expression {
 
 fn neg_expression(op1: Expression) -> Expression {
     match op1 {
-        Expression::Bind(string, expr) => Expression::Bind(string, Box::new(neg_expression(*expr))),
         Expression::Add(summands) => {
             Expression::Add(summands.into_iter().map(neg_expression).collect())
         }
