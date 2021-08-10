@@ -139,12 +139,17 @@ impl Expression {
 
                 for op in operands {
                     let mag = op.value(global_dict, local_dict);
-                    if result.unit != "¿?" && result.unit != mag.unit {
-                        panic!("Wrong units in {:?}.\n  Current result: {:?},\n  next operand:   {:?}\n",operands, result, mag);
+                    if !(result.unit == "¿?" || mag.unit == "¿?" || result.unit == mag.unit) {
+                        panic!("Wrong units adding {:?}.\n  Current result: {:?},\n  next operand:   {:?}\n",operands, result, mag);
                     }
 
                     let value = result.value + mag.value;
-                    result = Magnitude::new(value, mag.unit)
+                    let unit = if result.unit=="¿?" {
+                        mag.unit
+                    } else {
+                        result.unit
+                    };
+                    result = Magnitude::new(value, unit)
                 }
 
                 result
