@@ -6,31 +6,44 @@ iguales,
 
 ¿Cuánto pagará cada niño?
 
--> Valido Cálculo de los caramelos por niño
+
+-->
+Valido Cálculo de los caramelos por niño
+ 
  {{; CaramelosNiño = Caramelos Niños / caramelo/niño : }}
 
--> Valido Cálculo inutil pero válido
+--
+
+Esta opción es la correcta. 
+
+--> Esta opción es una prueba. 
+
+no aporta nada, pero está para demostrar el uso de opciones válidas múltiples
+esta opción no propone nada pero es pero válido hay que marcarla una vez
 
 Aquí hay un cálculo válido pero un poco inutil. 
 
--X ERROR Cálculo de los caramelos por niño 
+--X ERROR Cálculo de los caramelos por niño 
  {{; CaramelosNiño = Niños Caramelos / niño/caramelo : }}
 
--X ERROR Cálculo inválido
+--X ERROR Cálculo inválido
 
 Este cálculo se hace para probar distintas posibilidades 
 
----
+>>>
 
 A continuación 
 
--> VALIDO Cálculo del precio total
+--> VALIDO Cálculo del precio total
  {{, PrecioPagado = CaramelosNiño Precio * € :}}
 
--X ERROR Cálculo del precio total
+-- Se puede verificar que las unidades son las correctas
+
+--X ERROR Cálculo del precio total
  {{, PrecioPagado = CaramelosNiño Precio / €^-1 :}}
 
----
+-- Las unidades no son correctas
+>>>
 
 Felicidades, ha llegado al final.
 

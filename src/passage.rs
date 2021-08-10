@@ -11,9 +11,12 @@ use crate::expression::{DictVariables, Expression};
 
 // Some constants
 
-static END_PASSAGE: &str = "---";
-static START_GOOD_GATE: &str = "->";
-static START_BAD_GATE: &str = "-X";
+static END_PASSAGE: &str = ">>>";
+static START_GOOD_GATE: &str = "-->";
+static START_BAD_GATE: &str = "--X";
+static LENGTH_START: usize = 3;
+static START_EXPLANATION: &str = "--";
+static LENGTH_EXPLANATION: usize = 2;
 
 // Passage is an structure of:
 // * text to describe the situation until that moment
@@ -23,13 +26,20 @@ static START_BAD_GATE: &str = "-X";
 // Gate: info about an option
 #[derive(Debug, Clone)]
 pub struct Gate {
-    title: String,
     text: String,
+    explanation: String,
     good: bool,
     variables: DictVariables,
 }
 
 impl Gate {}
+
+#[derive(Debug, PartialEq, Eq)]
+enum ReadingPassageStatus {
+    ReadingPassage,
+    ReadingGateText,
+    ReadingGateExplanation,
+}
 
 #[derive(Debug)]
 pub struct Passage {
@@ -45,7 +55,7 @@ impl Passage {
         let mut line_string: String;
 
         // text_mode or gates_mode
-        let mut reading_gates: bool = false;
+        let mut reading_status = ReadingPassageStatus::ReadingPassage;
 
         // info to text mode
         let mut lines_text = Vec::<String>::new();
@@ -54,7 +64,7 @@ impl Passage {
         let mut gates = Vec::<Gate>::new();
         let mut local_variables = DictVariables::new();
         let mut lines_gate = Vec::<String>::new();
-        let mut gate_title: String = String::new();
+        let mut lines_explanation = Vec::<String>::new();
         let mut good_gate: bool = false;
 
         // reading lines of text
@@ -69,48 +79,59 @@ impl Passage {
                     line_string = line_string[1..].trim().to_string();
                 } else {
                     // line to process
-                    line_string =
-                        process_line(line_string, !reading_gates, variables, &mut local_variables);
+                    line_string = process_line(
+                        line_string,
+                        reading_status == ReadingPassageStatus::ReadingPassage,
+                        variables,
+                        &mut local_variables,
+                    );
                 }
             }
 
             // End of passage
+            //    The order of if clauses is relevant and dependent on constants used
             if line_string.starts_with(END_PASSAGE) {
                 break;
             } else if line_string.starts_with(START_GOOD_GATE)
                 || line_string.starts_with(START_BAD_GATE)
             {
                 // Start of Gate
-                reading_gates = true;
+                reading_status = ReadingPassageStatus::ReadingGateText;
 
                 // Create new gate
                 if !lines_gate.is_empty() {
                     let last_gate = Gate {
-                        title: gate_title,
                         text: lines_gate.join("\n"),
+                        explanation: lines_explanation.join("\n"),
                         good: good_gate,
                         variables: local_variables,
                     };
                     gates.push(last_gate);
 
                     lines_gate = vec![];
+                    lines_explanation = vec![];
                     local_variables = DictVariables::new();
                 }
 
                 // next gate title and type creation
-                gate_title = line_string[2..].trim().to_string();
-                let start = &line_string[0..2];
+                lines_gate.push(line_string[LENGTH_START..].trim().to_string());
+                let start = &line_string[0..LENGTH_START];
                 if start == START_GOOD_GATE {
                     good_gate = true;
                 } else {
                     good_gate = false;
                 }
+            } else if line_string.starts_with(START_EXPLANATION) {
+                reading_status = ReadingPassageStatus::ReadingGateExplanation;
+                lines_explanation.push(line_string[LENGTH_EXPLANATION..].trim().to_string());
             } else {
                 // adding lines
-                if reading_gates {
-                    lines_gate.push(line_string);
-                } else {
-                    lines_text.push(line_string);
+                match reading_status {
+                    ReadingPassageStatus::ReadingPassage => lines_text.push(line_string),
+                    ReadingPassageStatus::ReadingGateText => lines_gate.push(line_string),
+                    ReadingPassageStatus::ReadingGateExplanation => {
+                        lines_explanation.push(line_string)
+                    }
                 }
             }
         }
@@ -118,8 +139,8 @@ impl Passage {
         // adding last gate
         if !lines_gate.is_empty() {
             let last_gate = Gate {
-                title: gate_title,
                 text: lines_gate.join("\n"),
+                explanation: lines_explanation.join("\n"),
                 good: good_gate,
                 variables: local_variables,
             };
@@ -160,38 +181,38 @@ impl Passage {
         let mut gates = self.options.clone();
         gates.shuffle(&mut rand::thread_rng());
 
-
         //TODO: Internationalization
         output.push(String::from("\nMarque una opción correcta:\n"));
 
         let current_title = format!("{}", base_title);
         let num_correct_gates = self.count_correct_gates();
-        
+
         for (it, gate) in gates.iter().enumerate() {
             // links in current passage
-            let mut next_link : PassageTitles;
+            let mut next_link: PassageTitles;
 
-            if gate.good && num_correct_gates == 1{
-                    next_link = base_title.clone();
-                    next_link.inc_chapter();
-            } else { // other cases
-                    base_title.inc_section();
-                    next_link = base_title.clone();
+            if gate.good && num_correct_gates == 1 {
+                next_link = base_title.clone();
+                next_link.inc_chapter();
+            } else {
+                // other cases
+                base_title.inc_section();
+                next_link = base_title.clone();
             }
 
             //TODO: Internationalization
             output.push(format!(
-                "* [[Opción {}: -> {}]]\n {}\n {}",
+                "* [[Opción {}: -> {}]]\n {}",
                 it + 1,
                 next_link,
-                gate.title,
                 gate.text
-                    ));
+            ));
 
             // subpassages
-            if num_correct_gates >1 {
+            if num_correct_gates > 1 {
                 if gate.good {
-                    let new_text = format!("{}\n{}\n {}", self.text.clone(), gate.title, gate.text);
+                    let new_text =
+                        format!("{}\n {}\n ", self.text.clone(), gate.text);
                     let mut new_gates = gates.clone();
                     new_gates.remove(it);
 
@@ -202,10 +223,11 @@ impl Passage {
                         }
                         .build_subtree(base_title),
                     );
-                } else { //gate.bad
+                } else {
+                    //gate.bad
                     suboutput.push(self.build_wrong_gate(&base_title, &current_title));
                 }
-            } 
+            }
         }
 
         output.append(&mut suboutput);
