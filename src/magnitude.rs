@@ -25,11 +25,14 @@ lazy_static! {
     static ref RE_MAGNITUDE: Regex =
         Regex::new(r"(?x)              # extended mode
                    ^\s*
-                   (\d+                # 1 value: float
-                    (\.\d+)?           # 2
-                    (e\d+)?            # 3
+                   (                   # 1
+                   (-|\+)?             # 2
+                   (\d+                # 3 value: float
+                    (\.\d+)?           # 4
+                    (e\d+)?            # 5
                    )
-                   (.*)                # 4 units
+                   )
+                   (.*)                # 6 units
                    \s* $
                    ").unwrap();
 
@@ -40,7 +43,7 @@ lazy_static! {
                 'G' => 1e9,
                 'M' => 1e6,
                 'k' => 1e3,
-                '1' => 1.0,
+                '#' => 1.0,
                 'm' => 1e-3,
                 'u' => 1e-6,
                 'n' => 1e-9,
@@ -67,7 +70,7 @@ impl Magnitude {
         let without_underline = string.replace("_", "");
         RE_MAGNITUDE
             .captures(&without_underline)
-            .map(|cap| Magnitude::new(cap[1].parse::<ValueType>().unwrap(), cap[4].to_string()))
+            .map(|cap| Magnitude::new(cap[1].parse::<ValueType>().unwrap(), cap[6].to_string()))
     }
 
     pub fn new(value: ValueType, unit: String) -> Self {
@@ -80,8 +83,8 @@ impl Magnitude {
         let mut value = self.value;
         let mut unit = self.unit;
 
-        if unit.len() > 1 {
-            let units: Vec<char> = unit.chars().collect();
+        let units: Vec<char> = unit.chars().collect();
+        if units.len() > 1 {
             let first = units[0];
             let second = units[1];
 
@@ -123,7 +126,7 @@ impl fmt::Display for Magnitude {
         for (factor_name, factor_value) in FACTORS.iter() {
             scaled = value_abs / factor_value;
             if (1.0..1e3).contains(&scaled) {
-                if *factor_name != '1' {
+                if *factor_name != '#' {
                     new_unit = format!("{}{}", factor_name, new_unit);
                 }
                 break;

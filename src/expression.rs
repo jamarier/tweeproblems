@@ -47,8 +47,13 @@ impl Expression {
                 println!("current: {:?}", current);
             }
             if current.is_empty() {
-            } else if let Some(value) = Magnitude::get(current) {
-                stack.push(Expression::Magnitude(value));
+            } else if let Some(magnitude) = Magnitude::get(current) {
+                if magnitude.value >= 0.0 {
+                    stack.push(Expression::Magnitude(magnitude));
+                } else {
+                    let mag_abs = Magnitude {value : magnitude.value.abs(), unit : magnitude.unit};
+                    stack.push(Expression::Neg(Box::new(Expression::Magnitude(mag_abs))));
+                }
             } else {
                 match current {
                     "!" => to_dict(stack, dictionary),
