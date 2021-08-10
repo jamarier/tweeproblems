@@ -1,0 +1,37 @@
+Ejercicio 1.1
+
+Tenemos {{,C=10_#caramelo}} caramelos y {{,N=2_#niño}} niños. Si vendemos 
+cada caramelo a {{,P=0.15_€/caramelo}} y los niños lo compran a partes
+iguales, 
+
+¿Cuánto pagará cada niño?
+
+-> Valido Cálculo de los caramelos por niño
+ {{; CN = C N / caramelo/niño : }}
+
+-> Valido Cálculo inutil pero válido
+
+Aquí hay un cálculo válido pero un poco inutil. 
+
+-X ERROR Cálculo de los caramelos por niño 
+ {{; CN = N C /}}
+
+-X ERROR Cálculo inválido
+
+Este cálculo se hace para probar distintas posibilidades 
+
+---
+
+A continuación 
+
+-> VALIDO Cálculo del precio total
+!{{; PT = CN P * € :}}
+
+-> VALIDO Cálculo del precio total
+!{{; PT = CN P / € :}}
+
+---
+
+Felicidades, ha llegado al final.
+
+[[Volver a empezar -> Start]]
