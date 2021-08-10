@@ -11,7 +11,7 @@ mod magnitude;
 mod passage;
 
 use crate::expression::DictVariables;
-use crate::passage::Passage;
+use crate::passage::{Passage, PassageTitles};
 
 fn main() -> Result<()> {
     let args = App::new("TwineProblems")
@@ -35,16 +35,17 @@ fn main() -> Result<()> {
     // Open the file in read-only mode (ignoring errors).
     let mut line_iterator = open_input_file(input_file)?;
 
-    let title = locate_title(&mut line_iterator)?;
-
-    let output_lines = preface(&title);
+    let document_title = locate_title(&mut line_iterator)?;
+    let mut output_lines: Vec<String> = preface(&document_title);
+    let mut passage_title = PassageTitles::new();
 
     let mut variables: DictVariables = DictVariables::new();
 
-    let passage = Passage::read_passage(line_iterator, &mut variables);
-    println!("passage: {:?}", passage);
+    while let Some(passage) = Passage::read_passage(&mut line_iterator, &mut variables) {
+        output_lines.push(passage.build_subtree(&mut passage_title));
 
-    println!("variables detectadas: {:?}", variables);
+        passage_title.inc_chapter();
+    }
 
     write(output_file, output_lines.join("\n"))?;
 
@@ -117,8 +118,6 @@ fn preface(title: &str) -> Vec<String> {
 /* Import the mathjax library. */
 importScripts(\"https://polyfill.io/v3/polyfill.min.js?features=es6\");
 importScripts(\"https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js\");
-
-:: Start
 
 ",
         title,

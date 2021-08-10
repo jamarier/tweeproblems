@@ -13,3 +13,4 @@ uuid = { version = "0.5", features = ["v4"] }
 regex = "1"
 lazy_static = "1.1"
 maplit = "1.0"
+rand = "0.8"

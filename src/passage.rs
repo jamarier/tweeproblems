@@ -1,7 +1,9 @@
 // Passage generation
 
 use lazy_static::lazy_static;
+use rand::seq::SliceRandom;
 use regex::Regex;
+use std::fmt;
 use std::fs::File;
 use std::io::BufReader;
 
@@ -19,8 +21,8 @@ static START_BAD_GATE: &str = "-X";
 // * a mark of end of passage.
 
 // Gate: info about an option
-#[derive(Debug)]
-struct Gate {
+#[derive(Debug, Clone)]
+pub struct Gate {
     title: String,
     text: String,
     good: bool,
@@ -31,17 +33,15 @@ impl Gate {}
 
 #[derive(Debug)]
 pub struct Passage {
-    text: String,
-    options: Vec<Gate>,
+    pub text: String,
+    pub options: Vec<Gate>,
 }
 
 impl Passage {
     pub fn read_passage(
-        line_iterator: std::io::Lines<BufReader<File>>,
+        line_iterator: &mut std::io::Lines<BufReader<File>>,
         variables: &mut DictVariables,
-    ) -> Passage {
-        println!("Reading passage");
-
+    ) -> Option<Passage> {
         let mut line_string: String;
 
         // text_mode or gates_mode
@@ -64,7 +64,8 @@ impl Passage {
             // line processing
 
             if !line_string.is_empty() {
-                if &line_string[0..1] == "!" {
+                let first_char = line_string.chars().next().unwrap();
+                if first_char == '!' {
                     line_string = line_string[1..].trim().to_string();
                 } else {
                     // line to process
@@ -125,12 +126,92 @@ impl Passage {
             gates.push(last_gate);
         }
 
-        println!("Passage text: {}", lines_text.join("\n"));
-
-        Passage {
-            text: lines_text.join("\n"),
-            options: gates,
+        if !lines_text.is_empty() || !gates.is_empty() {
+            Some(Passage {
+                text: lines_text.join("\n"),
+                options: gates,
+            })
+        } else {
+            None
         }
+    }
+
+    fn build_wrong_gate(&self, current_title: &PassageTitles, return_title: &str) -> String {
+        format!("\n:: {}\n [[Ops -> {}]] \n", current_title, return_title)
+    }
+
+    fn count_correct_gates(&self) -> u16 {
+        let mut count = 0;
+
+        for option in &self.options {
+            if option.good {
+                count += 1;
+            }
+        }
+
+        count
+    }
+
+    pub fn build_subtree(&self, base_title: &mut PassageTitles) -> String {
+        let mut output: Vec<String> = vec![format!(":: {}\n", base_title), self.text.clone()];
+        let mut suboutput: Vec<String> = vec![];
+
+        // shuffle of gates
+        let mut gates = self.options.clone();
+        gates.shuffle(&mut rand::thread_rng());
+
+
+        //TODO: Internationalization
+        output.push(String::from("\nMarque una opción correcta:\n"));
+
+        let current_title = format!("{}", base_title);
+        let num_correct_gates = self.count_correct_gates();
+        
+        for (it, gate) in gates.iter().enumerate() {
+            // links in current passage
+            let mut next_link : PassageTitles;
+
+            if gate.good && num_correct_gates == 1{
+                    next_link = base_title.clone();
+                    next_link.inc_chapter();
+            } else { // other cases
+                    base_title.inc_section();
+                    next_link = base_title.clone();
+            }
+
+            //TODO: Internationalization
+            output.push(format!(
+                "* [[Opción {}: -> {}]]\n {}\n {}",
+                it + 1,
+                next_link,
+                gate.title,
+                gate.text
+                    ));
+
+            // subpassages
+            if num_correct_gates >1 {
+                if gate.good {
+                    let new_text = format!("{}\n{}\n {}", self.text.clone(), gate.title, gate.text);
+                    let mut new_gates = gates.clone();
+                    new_gates.remove(it);
+
+                    suboutput.push(
+                        Passage {
+                            text: new_text,
+                            options: new_gates,
+                        }
+                        .build_subtree(base_title),
+                    );
+                } else { //gate.bad
+                    suboutput.push(self.build_wrong_gate(&base_title, &current_title));
+                }
+            } 
+        }
+
+        output.append(&mut suboutput);
+
+        println!("OUTPUT PASSAGE:\n{}", output.join("\n"));
+        output.join("\n")
     }
 }
 
@@ -164,7 +245,7 @@ fn process_line(
                        \{\{                # initial parantheses 
                        (.)                 # code for interpolation type
                        \s*                  
-                       ( (.+?) \s* = \s* )?    # possible binding
+                       ( ([[:^blank:]]+?) \s* = \s* )?    # possible binding
                        (.+?)               # definition
                        \s*
                        \}\}
@@ -180,9 +261,9 @@ fn process_line(
         let m = cap.get(0).unwrap();
         output_vec.push(decode_line(&line[it..m.start()]));
 
-        println!("\n\nreading line: {:?}", &line);
+        //println!("\n\nreading line: {:?}", &line);
         let value: Expression = Expression::from(&decode_line(&cap[4]));
-        println!("Expression: {:?}", value);
+        //println!("Expression: {:?}", value);
 
         // binding
         let var_name: String = match cap.get(3) {
@@ -221,6 +302,7 @@ fn process_line(
         // printing/inyecting
         match &cap[1] {
             "." => {
+                // Shows only the value
                 output_vec.push(String::from("\\( "));
                 if !var_name.is_empty() {
                     output_vec.push(format!("{} = ", var_name));
@@ -229,6 +311,7 @@ fn process_line(
                 output_vec.push(String::from(" \\)"));
             }
             "," => {
+                // show only the calculation
                 output_vec.push(String::from("\\( "));
                 if !var_name.is_empty() {
                     output_vec.push(format!("{} = ", var_name));
@@ -237,6 +320,7 @@ fn process_line(
                 output_vec.push(String::from(" \\)"));
             }
             ";" => {
+                // calculation and later the value
                 output_vec.push(String::from("\\( "));
                 if !var_name.is_empty() {
                     output_vec.push(format!("{} = ", var_name));
@@ -247,6 +331,7 @@ fn process_line(
                 output_vec.push(String::from(" \\)"));
             }
             "!" => {
+                // Inject numeric value
                 if !var_name.is_empty() {
                     output_vec.push(format!("{}=", var_name));
                 }
@@ -270,4 +355,46 @@ fn process_line(
     }
 
     output_vec.join("")
+}
+
+//-------------------------
+
+#[derive(Debug, Clone)]
+pub struct PassageTitles {
+    chapter: u16,
+    section: u16,
+}
+
+impl PassageTitles {
+    pub fn new() -> Self {
+        PassageTitles {
+            chapter: 0,
+            section: 0,
+        }
+    }
+
+    pub fn inc_chapter(&mut self) {
+        self.chapter += 1;
+        self.section = 0;
+    }
+
+    pub fn inc_section(&mut self) {
+        self.section += 1;
+    }
+}
+
+impl fmt::Display for PassageTitles {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        let base: String = if self.chapter == 0 {
+            String::from("Start")
+        } else {
+            format!("Chapter-{}", self.chapter)
+        };
+
+        if self.section == 0 {
+            write!(formatter, "{}", base)
+        } else {
+            write!(formatter, "{}_{}", base, self.section)
+        }
+    }
 }

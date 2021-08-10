@@ -51,7 +51,10 @@ impl Expression {
                 if magnitude.value >= 0.0 {
                     stack.push(Expression::Magnitude(magnitude));
                 } else {
-                    let mag_abs = Magnitude {value : magnitude.value.abs(), unit : magnitude.unit};
+                    let mag_abs = Magnitude {
+                        value: magnitude.value.abs(),
+                        unit: magnitude.unit,
+                    };
                     stack.push(Expression::Neg(Box::new(Expression::Magnitude(mag_abs))));
                 }
             } else {
@@ -144,7 +147,7 @@ impl Expression {
                     }
 
                     let value = result.value + mag.value;
-                    let unit = if result.unit=="¿?" {
+                    let unit = if result.unit == "¿?" {
                         mag.unit
                     } else {
                         result.unit
