@@ -8,7 +8,8 @@ Start text
 -- Explanation of option C
 >>>
 
-Nuevo chapter
+Nuevo chapter (1)
+
 --> Good option AA with explanation
 -- Explanation of AA
 --X BAD option BB without explanation
@@ -19,12 +20,17 @@ This is more explanations for option CC.
 Explanations are not limited to first line.
 
 >>>
-Nuevo chapter
+Nuevo chapter (2)
+
 --> Good option 1 without explanation
+
 --> Good option 2 with explanation
+
 -- Explanation of GO2
+
 --> Good option 3 with explanation
 -- Explanation of Go3
+
 --X BAD option 4 without explanation
 --X BAD option 5 with explanation
 -- Explanation of BAD option 5

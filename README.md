@@ -106,8 +106,6 @@ Example of Passage:
 
 
 ## TODO
-* Combine passage with next one and variables
-  In this moment, every passage resets local_variables.
 
 * Detect Passage without any good answer
 

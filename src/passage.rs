@@ -45,6 +45,9 @@ enum ReadingPassageStatus {
 pub struct Passage {
     pub text: String,
     pub options: Vec<Gate>,
+    // all info
+    pub aftertext: String,
+    pub aftervariables: DictVariables,
 }
 
 impl Passage {
@@ -66,6 +69,10 @@ impl Passage {
         let mut lines_gate = Vec::<String>::new();
         let mut lines_explanation = Vec::<String>::new();
         let mut good_gate: bool = false;
+
+        // After info
+        let mut aftertext = String::new();
+        let mut aftervariables = DictVariables::new();
 
         // reading lines of text
         for line in line_iterator {
@@ -100,6 +107,10 @@ impl Passage {
 
                 // Create new gate
                 if !lines_gate.is_empty() {
+                    if good_gate {
+                        let temp = local_variables.clone();
+                        aftervariables.extend(temp);
+                    }
                     let last_gate = Gate {
                         text: lines_gate.join("\n"),
                         explanation: lines_explanation.join("\n"),
@@ -114,12 +125,15 @@ impl Passage {
                 }
 
                 // next gate title and type creation
-                lines_gate.push(line_string[LENGTH_START..].trim().to_string());
                 let start = &line_string[0..LENGTH_START];
                 if start == START_GOOD_GATE {
                     good_gate = true;
+                    let temp = line_string[LENGTH_START..].trim().to_string();
+                    aftertext = aftertext + &temp + "\n";
+                    lines_gate.push(temp);
                 } else {
                     good_gate = false;
+                    lines_gate.push(line_string[LENGTH_START..].trim().to_string());
                 }
             } else if line_string.starts_with(START_EXPLANATION) {
                 reading_status = ReadingPassageStatus::GateExplanation;
@@ -128,7 +142,12 @@ impl Passage {
                 // adding lines
                 match reading_status {
                     ReadingPassageStatus::Text => lines_text.push(line_string),
-                    ReadingPassageStatus::GateText => lines_gate.push(line_string),
+                    ReadingPassageStatus::GateText => {
+                        if good_gate {
+                            aftertext = aftertext + &line_string + "\n";
+                        }
+                        lines_gate.push(line_string);
+                    }
                     ReadingPassageStatus::GateExplanation => lines_explanation.push(line_string),
                 }
             }
@@ -136,6 +155,11 @@ impl Passage {
 
         // adding last gate
         if !lines_gate.is_empty() {
+            if good_gate {
+                let temp = local_variables.clone();
+                aftervariables.extend(temp);
+            }
+
             let last_gate = Gate {
                 text: lines_gate.join("\n"),
                 explanation: lines_explanation.join("\n"),
@@ -149,6 +173,8 @@ impl Passage {
             Some(Passage {
                 text: lines_text.join("\n"),
                 options: gates,
+                aftertext,
+                aftervariables,
             })
         } else {
             None
@@ -232,6 +258,8 @@ impl Passage {
                     Passage {
                         text: new_text,
                         options: new_gates,
+                        aftertext: String::new(),
+                        aftervariables: DictVariables::new(),
                     }
                     .build_subtree(base_title),
                 );
@@ -251,7 +279,6 @@ impl Passage {
 
         output.append(&mut suboutput);
 
-        println!("OUTPUT PASSAGE:\n{}", output.join("\n"));
         output.join("\n")
     }
 }

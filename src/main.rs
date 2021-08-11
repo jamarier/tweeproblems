@@ -41,9 +41,22 @@ fn main() -> Result<()> {
 
     let mut variables: DictVariables = DictVariables::new();
 
+    let mut previous_text = String::new();
+
     while let Some(passage) = Passage::read_passage(&mut line_iterator, &mut variables) {
+        previous_text = previous_text + "\n" + &passage.text;
+        let passage = Passage {
+            text : previous_text.clone(),
+            options: passage.options,
+            aftertext: passage.aftertext,
+            aftervariables: passage.aftervariables,
+        };
+
         output_lines.push(passage.build_subtree(&mut passage_title));
 
+        previous_text = previous_text + "\n" + &passage.aftertext;
+
+        variables.extend(passage.aftervariables.clone());
         passage_title.inc_chapter();
     }
 
