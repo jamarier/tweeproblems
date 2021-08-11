@@ -36,9 +36,9 @@ impl Gate {}
 
 #[derive(Debug, PartialEq, Eq)]
 enum ReadingPassageStatus {
-    ReadingPassage,
-    ReadingGateText,
-    ReadingGateExplanation,
+    Text,
+    GateText,
+    GateExplanation,
 }
 
 #[derive(Debug)]
@@ -55,7 +55,7 @@ impl Passage {
         let mut line_string: String;
 
         // text_mode or gates_mode
-        let mut reading_status = ReadingPassageStatus::ReadingPassage;
+        let mut reading_status = ReadingPassageStatus::Text;
 
         // info to text mode
         let mut lines_text = Vec::<String>::new();
@@ -81,7 +81,7 @@ impl Passage {
                     // line to process
                     line_string = process_line(
                         line_string,
-                        reading_status == ReadingPassageStatus::ReadingPassage,
+                        reading_status == ReadingPassageStatus::Text,
                         variables,
                         &mut local_variables,
                     );
@@ -96,7 +96,7 @@ impl Passage {
                 || line_string.starts_with(START_BAD_GATE)
             {
                 // Start of Gate
-                reading_status = ReadingPassageStatus::ReadingGateText;
+                reading_status = ReadingPassageStatus::GateText;
 
                 // Create new gate
                 if !lines_gate.is_empty() {
@@ -122,16 +122,14 @@ impl Passage {
                     good_gate = false;
                 }
             } else if line_string.starts_with(START_EXPLANATION) {
-                reading_status = ReadingPassageStatus::ReadingGateExplanation;
+                reading_status = ReadingPassageStatus::GateExplanation;
                 lines_explanation.push(line_string[LENGTH_EXPLANATION..].trim().to_string());
             } else {
                 // adding lines
                 match reading_status {
-                    ReadingPassageStatus::ReadingPassage => lines_text.push(line_string),
-                    ReadingPassageStatus::ReadingGateText => lines_gate.push(line_string),
-                    ReadingPassageStatus::ReadingGateExplanation => {
-                        lines_explanation.push(line_string)
-                    }
+                    ReadingPassageStatus::Text => lines_text.push(line_string),
+                    ReadingPassageStatus::GateText => lines_gate.push(line_string),
+                    ReadingPassageStatus::GateExplanation => lines_explanation.push(line_string),
                 }
             }
         }
@@ -157,10 +155,6 @@ impl Passage {
         }
     }
 
-    fn build_wrong_gate(&self, current_title: &PassageTitles, return_title: &str) -> String {
-        format!("\n:: {}\n [[Ops -> {}]] \n", current_title, return_title)
-    }
-
     fn count_correct_gates(&self) -> u16 {
         let mut count = 0;
 
@@ -174,59 +168,84 @@ impl Passage {
     }
 
     pub fn build_subtree(&self, base_title: &mut PassageTitles) -> String {
-        let mut output: Vec<String> = vec![format!(":: {}\n", base_title), self.text.clone()];
         let mut suboutput: Vec<String> = vec![];
+
+        // main text of passage
+        let mut output: Vec<String> = vec![format!(":: {}\n", base_title), self.text.clone()];
+
+        // last passage
+        if self.options.is_empty() {
+            //TODO: I18N
+            output.push(String::from("\n[[Volver a empezar -> Start]] \n"));
+        } else {
+            //TODO: I18N
+            output.push(String::from("\nMarque una opción correcta:\n"));
+        }
 
         // shuffle of gates
         let mut gates = self.options.clone();
         gates.shuffle(&mut rand::thread_rng());
 
-        //TODO: Internationalization
-        output.push(String::from("\nMarque una opción correcta:\n"));
-
-        let current_title = format!("{}", base_title);
-        let num_correct_gates = self.count_correct_gates();
+        let current_link = base_title.to_string();
+        let last_good_correct = self.count_correct_gates() == 1;
 
         for (it, gate) in gates.iter().enumerate() {
-            // links in current passage
-            let mut next_link: PassageTitles;
-
-            if gate.good && num_correct_gates == 1 {
-                next_link = base_title.clone();
-                next_link.inc_chapter();
-            } else {
-                // other cases
-                base_title.inc_section();
-                next_link = base_title.clone();
-            }
-
-            //TODO: Internationalization
-            output.push(format!(
-                "* [[Opción {}: -> {}]]\n {}",
-                it + 1,
-                next_link,
-                gate.text
-            ));
-
-            // subpassages
-            if num_correct_gates > 1 {
-                if gate.good {
-                    let new_text =
-                        format!("{}\n {}\n ", self.text.clone(), gate.text);
-                    let mut new_gates = gates.clone();
-                    new_gates.remove(it);
-
-                    suboutput.push(
-                        Passage {
-                            text: new_text,
-                            options: new_gates,
-                        }
-                        .build_subtree(base_title),
-                    );
+            if gate.good && last_good_correct {
+                if !gate.explanation.is_empty() {
+                    let explanation_link = base_title.inc_section();
+                    output.push(build_option_msg(it + 1, &explanation_link, &gate.text));
+                    let next_link = base_title.show_next_chapter();
+                    suboutput.push(build_explanation_gate(
+                        &explanation_link,
+                        &gate.explanation,
+                        "Continuar",
+                        &next_link,
+                    ));
                 } else {
-                    //gate.bad
-                    suboutput.push(self.build_wrong_gate(&base_title, &current_title));
+                    // good last without explanations
+                    let next_link = base_title.show_next_chapter();
+                    output.push(build_option_msg(it + 1, &next_link, &gate.text));
                 }
+            } else if gate.good {
+                if !gate.explanation.is_empty() {
+                    let explanation_link = base_title.inc_section();
+                    output.push(build_option_msg(it + 1, &explanation_link, &gate.text));
+                    let next_link = base_title.inc_section();
+                    suboutput.push(build_explanation_gate(
+                        &explanation_link,
+                        &gate.explanation,
+                        "Continuar",
+                        &next_link,
+                    ));
+                } else {
+                    // without explanations
+                    let next_link = base_title.inc_section();
+                    output.push(build_option_msg(it + 1, &next_link, &gate.text));
+                }
+
+                // building subtree
+                let new_text = format!("{}\n{}\n", self.text.clone(), gate.text);
+                let mut new_gates = gates.clone();
+                new_gates.remove(it);
+
+                suboutput.push(
+                    Passage {
+                        text: new_text,
+                        options: new_gates,
+                    }
+                    .build_subtree(base_title),
+                );
+            } else {
+                // bad gate
+                base_title.inc_section();
+                let explanation_title = base_title.to_string();
+                output.push(build_option_msg(it + 1, &explanation_title, &gate.text));
+                suboutput.push(build_explanation_gate(
+                    &explanation_title,
+                    &gate.explanation,
+                    "Intentarlo nuevamente",
+                    &current_link,
+                ));
             }
         }
 
@@ -237,6 +256,7 @@ impl Passage {
     }
 }
 
+//-------------------------
 fn encode_line(string: &str) -> String {
     string
         .replace("\\\\", "\\0")
@@ -251,6 +271,7 @@ fn decode_line(string: &str) -> String {
         .replace("\\0", "\\")
 }
 
+//-------------------------
 fn process_line(
     line: String,
     to_global: bool,
@@ -381,6 +402,25 @@ fn process_line(
 
 //-------------------------
 
+fn build_option_msg(order: usize, next_link: &str, text: &str) -> String {
+    //TODO I18N
+    format!("* [[Opción {}: -> {}]]\n{}", order, next_link, text)
+}
+
+fn build_explanation_gate(
+    current_link: &str,
+    explanation: &str,
+    mesg: &str,
+    next_link: &str,
+) -> String {
+    format!(
+        "\n:: {}\n{}\n[[{} -> {}]]\n",
+        current_link, explanation, mesg, next_link
+    )
+}
+
+//-------------------------
+
 #[derive(Debug, Clone)]
 pub struct PassageTitles {
     chapter: u16,
@@ -400,8 +440,15 @@ impl PassageTitles {
         self.section = 0;
     }
 
-    pub fn inc_section(&mut self) {
+    pub fn show_next_chapter(&self) -> String {
+        let mut temp = self.clone();
+        temp.inc_chapter();
+        temp.to_string()
+    }
+
+    pub fn inc_section(&mut self) -> String {
         self.section += 1;
+        self.to_string()
     }
 }
 

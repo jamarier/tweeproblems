@@ -26,6 +26,9 @@ Aquí hay un cálculo válido pero un poco inutil.
 --X ERROR Cálculo de los caramelos por niño 
  {{; CaramelosNiño = Niños Caramelos / niño/caramelo : }}
 
+--
+Las unidades no son muy correctas.
+
 --X ERROR Cálculo inválido
 
 Este cálculo se hace para probar distintas posibilidades 

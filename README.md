@@ -1,3 +1,46 @@
+## TWP FORMAT
+
+* First non-empty line is the name of the excersise.
+
+* The rest is divided into passages. The separator is 
+  ">>>" at the first column of a line. The rest of the line is discarded.
+  It is an separator, it is not needed in the last passage.
+
+### Passage Format
+* Text to show before any option
+
+* Each option is marked with "-->" or "--X" at first column of line. The rest of the line
+  is incorporated into the option text.
+
+* All text of options are shown after the text to show in the passage (except comentaries)
+  
+* "-->" (an arrow) this option is a good one. Must be selected to advance in the excercise.
+
+* "--X" (a ¿crossed? arrow) this option is false. The option doesn't allow to advance.
+
+* Inside an option, it is possible to write comments to show after the option is selected. 
+  "--" At the begining of line is to mark the start of comments. It's optional.
+
+* Empty lines can be used to improve readability.
+
+Example of Passage: 
+
+  """
+  Please, solve 1 + 1
+
+  --> 1 + 2 = 3
+  -- it is better if you can do it without use of your fingers
+
+  --X 
+    If we think in binary 1 is 1 and 2 is 10. So, 1 + 2 = 11
+  --
+    To be correct, an marker of binary is nedded in every binary number (i.e. "11b")
+  
+  --X How many do you want to be?
+  --
+    He, he, he. No.
+  """
+
 ## MAGNITUDES
 
 * Always without space but '____' can be used to visually separate parts. 
@@ -63,6 +106,9 @@
 
 
 ## TODO
+* Combine passage with next one and variables
+  In this moment, every passage resets local_variables.
+
 * Detect Passage without any good answer
 
 * Internalization
@@ -72,10 +118,6 @@
 * Detector of paragraph formulas
 
   If a formula is the only text in the line, put in display mode not inline mode
-
-* Transicion gates
-
-  Possibility of add comments after selecting a gate (e.g. why is incorrect)
 
 * Parallel Passages: 
 

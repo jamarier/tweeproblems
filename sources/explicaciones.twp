@@ -1,0 +1,33 @@
+Test 1 about gates
+
+Start text
+
+--> Good option A without explanation
+--X BAD option B without explanation
+--X BAD option C with explanation
+-- Explanation of option C
+>>>
+
+Nuevo chapter
+--> Good option AA with explanation
+-- Explanation of AA
+--X BAD option BB without explanation
+--X BAD option CC with explanation
+-- Explanation of option CC
+
+This is more explanations for option CC. 
+Explanations are not limited to first line.
+
+>>>
+Nuevo chapter
+--> Good option 1 without explanation
+--> Good option 2 with explanation
+-- Explanation of GO2
+--> Good option 3 with explanation
+-- Explanation of Go3
+--X BAD option 4 without explanation
+--X BAD option 5 with explanation
+-- Explanation of BAD option 5
+>>>
+
+Congratulations, You did it!
