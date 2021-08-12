@@ -311,21 +311,23 @@ fn process_line(
 
     lazy_static! {
         static ref RE_INTERPOLATION: Regex = Regex::new(
-            r"(?x)              # extended mode
-                       \{\{                # initial parantheses 
-                       (.)                 # code for interpolation type
-                       \s*                  
-                       ( ([[:^blank:]]+?) \s* = \s* )?    # possible binding
-                       (.+?)               # definition
-                       \s*
-                       \}\}
-                       "
+            r"(?x)                 # extended mode
+               \{\{                # initial parantheses 
+               (.)                 # 1 code for interpolation type
+               \s*                  
+               ( ([[:^blank:]]+?) \s* = \s* )?    # 2 3 possible binding
+               (.+?)               # 4 definition
+               \s*
+               \}\}
+               "
         )
         .unwrap();
     }
 
     // search for inline code
     let mut it: usize = 0;
+    let displaymode: bool = is_displaymode(&line);
+    println!("displaymode line {:?} {:?}", line, displaymode);
     for cap in RE_INTERPOLATION.captures_iter(&line) {
         // pass everythin before interpolation
         let m = cap.get(0).unwrap();
@@ -425,6 +427,40 @@ fn process_line(
     }
 
     output_vec.join("")
+}
+
+fn is_displaymode(line: &str) -> bool {
+    lazy_static! {
+        static ref RE_ISDISPLAY: Regex = Regex::new(
+            r"(?xi)
+            ^[[:^alnum:]]*
+            \{\{
+            .*?
+            \}\}
+            ^[[:^alnum:]]*
+            $
+            "
+        )
+        .unwrap();
+    }
+
+    println!("---\nanalisis of {:?}", line);
+
+    let re = Regex::new(
+        r"(?xi)
+            ^
+            [^[:alnum:]]*
+            \{\{
+            .*?
+            \}\}
+            [^[:alnum:]]*
+            $
+        ",
+    )
+    .unwrap();
+
+    println!("re: {:?}", re.is_match(line));
+    return RE_ISDISPLAY.is_match(line);
 }
 
 //-------------------------

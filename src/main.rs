@@ -46,7 +46,7 @@ fn main() -> Result<()> {
     while let Some(passage) = Passage::read_passage(&mut line_iterator, &mut variables) {
         previous_text = previous_text + "\n" + &passage.text;
         let passage = Passage {
-            text : previous_text.clone(),
+            text: previous_text.clone(),
             options: passage.options,
             aftertext: passage.aftertext,
             aftervariables: passage.aftervariables,

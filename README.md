@@ -70,12 +70,21 @@ Example of Passage:
   * In source: formulas and values are inside a double with this structure:
     "{{" <type of injection> (<Variablename> =)? <Expresion> "}}"
 
+  * There are three escape sequences:
+    * "\\" to escape '\'
+    * "\{" to escape '{'  and 
+    * "\}" to escape '}'
+
+    So it is possible to write "{{ \frac{1}{n_{2}\} }}" whithout exit formulas too soon.
+
   * Type of injection:
     * "." only show value of Expression (MathJax Format)
     * "," only show formula of Expression (MathJax Format)
     * ";" show formula and value (MathJax Format)
     * "_" calculate effects of Expression but doesn't show anything
     * "!" calculate value (without units) and insert into text.
+
+  * A formula without text ([:alpha:]) before and after it, will be shown as display formula. Otherwise, it will be shown as inline.
 
 ## Expressions
   Expressions are a RPN notation.
