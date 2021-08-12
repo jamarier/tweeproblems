@@ -373,32 +373,32 @@ fn process_line(
         match &cap[1] {
             "." => {
                 // Shows only the value
-                output_vec.push(String::from("\\( "));
+                output_vec.push(String::from("\"\"\"\\( "));
                 if !var_name.is_empty() {
                     output_vec.push(format!("{} = ", var_name));
                 }
                 output_vec.push(format!("{}", value.value(&global_vars, &local_vars)));
-                output_vec.push(String::from(" \\)"));
+                output_vec.push(String::from(" \\)\"\"\""));
             }
             "," => {
                 // show only the calculation
-                output_vec.push(String::from("\\( "));
+                output_vec.push(String::from("\"\"\"\\( "));
                 if !var_name.is_empty() {
                     output_vec.push(format!("{} = ", var_name));
                 }
                 output_vec.push(value.show());
-                output_vec.push(String::from(" \\)"));
+                output_vec.push(String::from(" \\)\"\"\""));
             }
             ";" => {
                 // calculation and later the value
-                output_vec.push(String::from("\\( "));
+                output_vec.push(String::from("\"\"\"\\( "));
                 if !var_name.is_empty() {
                     output_vec.push(format!("{} = ", var_name));
                 }
                 output_vec.push(value.show());
                 output_vec.push(String::from(" = "));
                 output_vec.push(format!("{}", value.value(&global_vars, &local_vars)));
-                output_vec.push(String::from(" \\)"));
+                output_vec.push(String::from(" \\)\"\"\""));
             }
             "!" => {
                 // Inject numeric value

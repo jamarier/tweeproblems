@@ -119,7 +119,18 @@ Example of Passage:
 
 * Parallel Passages: 
 
-  generate two or more independ gates to achieve the same step
+  generate two or more independ gates to achieve the same step.
+
+  This requires a great modification of the structure of passages: 
+    - passage is now text and false outs
+    - false outs can be at the beggining (to be injected in previous passage) or at the end (for the next decission).
+    - passages are read into a stack and 
+    - there are some operators to define the relations bewteen passages (again RPN):
+      - consecutive in same order
+      - consecutive but in indiferent order 
+      - Alternatives (or one or other).
+    - In the stitching phase, the start of a passage is inyected as a good answer of the previous one and all the false outs at the beggining
+
   
 * Auto builder of passages
   rank all gates by dependencies level (this expression is level 3 because its variables are level 2) 

@@ -2,30 +2,29 @@ Test 1 about gates
 
 Start text
 
- {{; R1 = 1}}
+{{; R1 = 1}} y {{; R2 = R1 1 / :: }}
 
- {{; R2 = R1 1 + }}
 
 --> Good option A without explanation
- {{; R_{bueno} = 1 }}
- {{; R22 = 2 }}
+{{; R_{bueno} = 1 }}{{; R22 = 2 }}
 --X Bad option
 
- {{; R4 = 1  }}
- {{; R_{malo} = 1}}
+{{; R4 = 1  }}
+{{; R_{malo} = 1}}
 >>>
 
 Nuevo chapter (1)
 
- {{; R3 = R2 1 + }}
+{{; R3 = R2 1 + }}
 
 --> Good option AA with explanation
+-- Explanation of AA
 
 >>>
 Nuevo chapter (2)
 
- {{; R4 = R3 1 + }}
- {{; R23 = R22 1 + }}
+{{; R4 = R3 1 / :: }}
+{{; R23 = R22 1 + }}
 
 --> Good option 3 with explanation
 -- Explanation of Go3

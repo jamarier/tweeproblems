@@ -1,0 +1,35 @@
+::StoryTitle
+
+Problems with math equations
+
+:: StoryData
+{
+    "ifid": "c096ca18-1b13-4f3c-bb5a-73afe57765db"
+}
+
+:: UserScripts [script]
+
+/* Import the mathjax library. */
+importScripts("https://polyfill.io/v3/polyfill.min.js?features=es6");
+importScripts("https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js");
+
+
+:: Start
+
+Start
+
+"""\( R2 =  \frac{R1}{1}  = 1 \)"""
+
+<nowiki>\( R2 =  \frac{R1}{1}  = 1 \)</nowiki>
+
+[[ Next -> Chapter-1 ]]
+
+:: Chapter-1
+
+Chapter-1
+
+"""\( R2 =  \frac{R1}{1}  = 1 \)"""
+
+<nowiki>\( R2 =  \frac{R1}{1}  = 1 \)</nowiki>
+
+[[Again -> Start]] 
