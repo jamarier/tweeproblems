@@ -324,10 +324,20 @@ fn process_line(
         .unwrap();
     }
 
+    // displaymode
+    let start_math : &str;
+    let end_math: &str;
+    if is_displaymode(&line) {
+        start_math = "\"\"\"\\[ ";
+        end_math = " \\]\"\"\"";
+    } else {
+        start_math = "\"\"\"\\( ";
+        end_math = " \\)\"\"\"";
+    }
+
     // search for inline code
     let mut it: usize = 0;
-    let displaymode: bool = is_displaymode(&line);
-    println!("displaymode line {:?} {:?}", line, displaymode);
+    
     for cap in RE_INTERPOLATION.captures_iter(&line) {
         // pass everythin before interpolation
         let m = cap.get(0).unwrap();
@@ -375,32 +385,32 @@ fn process_line(
         match &cap[1] {
             "." => {
                 // Shows only the value
-                output_vec.push(String::from("\"\"\"\\( "));
+                output_vec.push(start_math.to_string());
                 if !var_name.is_empty() {
                     output_vec.push(format!("{} = ", var_name));
                 }
                 output_vec.push(format!("{}", value.value(&global_vars, &local_vars)));
-                output_vec.push(String::from(" \\)\"\"\""));
+                output_vec.push(end_math.to_string());
             }
             "," => {
                 // show only the calculation
-                output_vec.push(String::from("\"\"\"\\( "));
+                output_vec.push(start_math.to_string());
                 if !var_name.is_empty() {
                     output_vec.push(format!("{} = ", var_name));
                 }
                 output_vec.push(value.show());
-                output_vec.push(String::from(" \\)\"\"\""));
+                output_vec.push(end_math.to_string());
             }
             ";" => {
                 // calculation and later the value
-                output_vec.push(String::from("\"\"\"\\( "));
+                output_vec.push(start_math.to_string());
                 if !var_name.is_empty() {
                     output_vec.push(format!("{} = ", var_name));
                 }
                 output_vec.push(value.show());
                 output_vec.push(String::from(" = "));
                 output_vec.push(format!("{}", value.value(&global_vars, &local_vars)));
-                output_vec.push(String::from(" \\)\"\"\""));
+                output_vec.push(end_math.to_string());
             }
             "!" => {
                 // Inject numeric value
@@ -432,35 +442,23 @@ fn process_line(
 fn is_displaymode(line: &str) -> bool {
     lazy_static! {
         static ref RE_ISDISPLAY: Regex = Regex::new(
-            r"(?xi)
-            ^[[:^alnum:]]*
-            \{\{
-            .*?
-            \}\}
-            ^[[:^alnum:]]*
-            $
-            "
-        )
-        .unwrap();
-    }
-
-    println!("---\nanalisis of {:?}", line);
-
-    let re = Regex::new(
         r"(?xi)
-            ^
-            [^[:alnum:]]*
+            ^ 
+            [^[:alnum:]]*     
             \{\{
-            .*?
+            (.*)               # 1
             \}\}
             [^[:alnum:]]*
             $
         ",
-    )
-    .unwrap();
+        )
+        .unwrap();
+    }
 
-    println!("re: {:?}", re.is_match(line));
-    return RE_ISDISPLAY.is_match(line);
+    match RE_ISDISPLAY.captures(line) {
+        Some(matches) => !matches[1].contains("}}"),
+        None => false,
+    }
 }
 
 //-------------------------
