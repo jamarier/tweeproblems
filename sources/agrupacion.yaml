@@ -8,7 +8,15 @@ passages:
           Sean tres resistencias según la figura (falta): {{,R_1=100ohm}}, {{,R_2=200ohm}} (en serie) y {{,R_3=300ohm}} 
           !en paralelo con las dos anteriores.
 
-          Determinar la intensidad que pasa por todas las resistencias si la tensión en los extremos de {{,R_3}} es {{,V=10V}}. 
+          Determinar la intensidad que pasa circula por el conjunto si la tensión de alimentación es {{,V=10V}}. 
+        post_bad: 
+          - Como {{,V=10V}}, esto implica que {{,I=10A}}
+          - |
+            Pista
+            ---
+            Hay dos enfoque para este problema: 
+            * Calcular la resistencia equivalente del conjunto
+            * Calcular la intensidad por cada rama y sumarlas
     - alt:
       - seq:
           - con:

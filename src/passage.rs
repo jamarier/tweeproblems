@@ -286,7 +286,7 @@ pub fn load_exercise(file: &Path) -> Result<Exercise> {
     println!("\ntitle: {:?}",title);
 
     println!("\ndocs: {:?}", doc);
-    let passages = convert_yaml(&doc["passages"], variables);
+    let passages = convert_yaml(&doc["passages"], &variables);
     println!("\npassages: {:?}", passages);
     
 
@@ -301,47 +301,90 @@ fn unique_key(hash: &Hash) -> Option<&str> {
     return Some(hash.front().unwrap().0.as_str().unwrap());
 }
 
-fn convert_yaml(yaml: &Yaml, dictionary: DictVariables) -> (PassageElem, DictVariables) {
+fn convert_yaml(yaml: &Yaml, dictionary: &DictVariables) -> (PassageElem, DictVariables) {
     let (output,vars) = match yaml {
         Yaml::Hash(hash) => match unique_key(hash) {
                 Some("pass") => convert_pass(&yaml["pass"],dictionary),
                 Some("seq") => convert_seq(yaml["seq"].as_vec().unwrap(),dictionary),
-                Some("alt") => convert_seq(yaml["alt"].as_vec().unwrap(),dictionary),
-                Some("con") => convert_seq(yaml["con"].as_vec().unwrap(),dictionary),
+                Some("alt") => convert_alt(yaml["alt"].as_vec().unwrap(),dictionary),
+                Some("con") => convert_con(yaml["con"].as_vec().unwrap(),dictionary),
                 _ => panic!("I don't know how to process {:?}", hash)
             }
         _ => panic!("I don't know how to process {:?}", yaml)
     };
 
+    println!("\n{:?}",output);
+
     (output, vars)
 }
 
-fn convert_pass(pass: &Yaml, dictionary: DictVariables) -> (PassageElem, DictVariables) {
+fn convert_pass(pass: &Yaml, dictionary: &DictVariables) -> (PassageElem, DictVariables) {
     println!("\npass: {:?}", pass);
 
-    let text = Gate::from(pass["text"].as_str().unwrap(), &dictionary);
+    let text = Gate::from(pass["text"].as_str().unwrap(), dictionary);
 
-    let previous_bad = vec![];
-    let post_bad = vec![];
+    let mut previous_bad = vec![];
+    let mut post_bad = vec![];
+
+    if let Some(vec) = pass["pre_bad"].as_vec() {
+        for item in vec {
+            previous_bad.push(Gate::from(item.as_str().unwrap(), dictionary));
+        }
+    }
+
+    if let Some(vec) = pass["post_bad"].as_vec() {
+        for item in vec {
+            post_bad.push(Gate::from(item.as_str().unwrap(), dictionary));
+        }
+    }
 
     let vars = text.variables.clone();
-
-    println!("\n text: {:?}", text);
     (PassageElem::Passage(Passage{previous_bad, text, post_bad}), vars)
 }
 
-fn convert_seq(elems: &Vec<Yaml>, dictionary: DictVariables) -> (PassageElem, DictVariables) {
+fn convert_seq(elems: &Vec<Yaml>, dictionary: &DictVariables) -> (PassageElem, DictVariables) {
     let mut dict = dictionary.clone();
     let mut passages = Vec::<PassageElem>::new();
 
     println!("\nelems: {:?}", elems);
     for elem in elems {
         println!("\nelem: {:?}", elem);
-        let (passelem, ndict) = convert_yaml(elem, dict);
+        let (passelem, ndict) = convert_yaml(elem, &dict);
         dict = ndict;
         passages.push(passelem)
     }
     (PassageElem::Sequential(passages), dict)
+}
+
+fn convert_con(elems: &Vec<Yaml>, dictionary: &DictVariables) -> (PassageElem, DictVariables) {
+    let base_dict = dictionary.clone();
+    let mut dict = dictionary.clone();
+    let mut passages = Vec::<PassageElem>::new();
+
+    println!("\nelems: {:?}", elems);
+    for elem in elems {
+        println!("\nelem: {:?}", elem);
+        let (passelem, mut ndict) = convert_yaml(elem, &base_dict);
+        dict.extend(ndict);
+        passages.push(passelem)
+    }
+    (PassageElem::Concurrent(passages), dict)
+}
+
+fn convert_alt(elems: &Vec<Yaml>, dictionary: &DictVariables) -> (PassageElem, DictVariables) {
+    let base_dict = dictionary.clone();
+    let mut dict = dictionary.clone();
+    let mut passages = Vec::<PassageElem>::new();
+
+    println!("\nelems: {:?}", elems);
+    for elem in elems {
+        println!("\nelem: {:?}", elem);
+        let (passelem, ndict) = convert_yaml(elem, &base_dict);
+        dict = ndict;
+        passages.push(passelem)
+    }
+    // dict is the dictionary of last branch
+    (PassageElem::Alternative(passages), dict)
 }
 
 
