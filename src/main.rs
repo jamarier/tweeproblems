@@ -1,6 +1,7 @@
 use anyhow::{bail, Result};
 use clap::{App, Arg};
-use std::fs::{write, File};
+//use std::fs::{write, File};
+use std::fs::{File};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
@@ -10,14 +11,14 @@ mod formulas;
 mod magnitude;
 mod passage;
 
-use crate::expression::DictVariables;
-use crate::passage::{Passage, PassageTitles};
+//use crate::expression::DictVariables;
+//use crate::passage::{Passage};
 
 fn main() -> Result<()> {
     let args = App::new("TwineProblems")
         .version("0.1")
         .author("Javier M Mora <jmmora@us.es>")
-        .about("Take problems and generate twine stories to practice")
+        .about("Take math/engineering exercises and generate twine stories to practice")
         .arg(
             Arg::with_name("INPUT")
                 .help("Sets the input file to use")
@@ -32,11 +33,21 @@ fn main() -> Result<()> {
     println!("input file: {:?}", input_file);
     println!("output file: {:?}", output_file);
 
+
+    passage::load_exercise(&input_file);
+
+    return Ok(());
+    /*
     // Open the file in read-only mode (ignoring errors).
     let mut line_iterator = open_input_file(input_file)?;
 
     let document_title = locate_title(&mut line_iterator)?;
     let mut output_lines: Vec<String> = preface(&document_title);
+
+
+
+
+
     let mut passage_title = PassageTitles::new();
 
     let mut variables: DictVariables = DictVariables::new();
@@ -63,6 +74,7 @@ fn main() -> Result<()> {
     write(output_file, output_lines.join("\n"))?;
 
     Ok(())
+    */
 }
 
 fn check_input_file(input: &Path) -> Result<&Path> {
@@ -70,8 +82,8 @@ fn check_input_file(input: &Path) -> Result<&Path> {
     match input.extension() {
         None => bail!("INPUT file without extension"),
         Some(ext) => {
-            if ext != "twp" {
-                bail!("INPUT file extension isn't twp.")
+            if ext != "yaml" {
+                bail!("INPUT file extension isn't yaml.")
             }
         }
     }

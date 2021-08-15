@@ -1,13 +1,356 @@
 // Passage generation
 
+use anyhow::{Result};
 use lazy_static::lazy_static;
-use rand::seq::SliceRandom;
+//use rand::seq::SliceRandom;
 use regex::Regex;
-use std::fmt;
-use std::fs::File;
-use std::io::BufReader;
+//use std::fmt;
+use std::fs;
+//use std::fs::File;
+//use std::io::BufReader;
+use yaml_rust::{Yaml,YamlLoader};
+use yaml_rust::yaml::{Hash};
+use std::path::Path;
 
 use crate::expression::{DictVariables, Expression};
+
+// Gate: info about an option
+#[derive(Debug, Clone)]
+pub struct Gate {
+    text: String,             // ___ text to show to be able to make a choice
+    follow: String,           // ... text shown after election in the main history
+    note: String,             // --- text shown after election in a temporal history
+    variables: DictVariables, // variables defined after this gate.
+}
+
+impl Gate {
+    fn from(string : &str, variables: &DictVariables) -> Self {
+        println!("Gate::From {:?}", string);
+
+        let mut text = Vec::<String>::new();
+        let mut follow = Vec::<String>::new();
+        let mut note = Vec::<String>::new();
+
+        let mut variables = variables.clone();
+
+        let mut status = GateStatus::Text;
+
+        let lines = string.split("\n");
+        for mut line in lines {
+            if let Some(verbatim) = line_start_with("!",line) {
+                line = verbatim;
+                match status {
+                    GateStatus::Text => text.push(line.to_string()),
+                    GateStatus::Follow => follow.push(line.to_string()),
+                    GateStatus::Note => note.push(line.to_string()),
+                }
+                continue;
+            }
+            
+            if let Some(rest) = line_start_with("___",line) {
+                status = GateStatus::Text;
+                line = rest;
+            } else if let Some(rest) = line_start_with("...",line) {
+                status = GateStatus::Follow;
+                line = rest;
+            } else if let Some(rest) = line_start_with("---",line) {
+                status = GateStatus::Note;
+                line = rest;
+            }
+
+            match status {
+                GateStatus::Text => text.push(process_line(&line, &mut variables)),
+                GateStatus::Follow => follow.push(process_line(&line, &mut variables)),
+                GateStatus::Note => note.push(process_line(&line, &mut variables)),
+            }
+        }
+
+        Gate {text: text.join("\n"), follow: follow.join("\n"), note: note.join("\n"), variables: variables}
+
+    }
+}
+
+fn line_start_with<'a,'b>( preffix: &'a str, line : &'b str) -> Option<&'b str> {
+    if line.starts_with(preffix) {
+        Some(&line[preffix.len()..])
+    } else {
+        None
+    }
+}
+
+enum GateStatus {
+    Text,
+    Follow,
+    Note
+}
+
+//-------------------------
+fn process_line(
+    line: &str,
+    vars: &mut DictVariables,
+) -> String {
+    let mut output_vec = Vec::<String>::new();
+
+    let line = encode_line(&line);
+
+    lazy_static! {
+        static ref RE_INTERPOLATION: Regex = Regex::new(
+            r"(?x)                 # extended mode
+               \{\{                # initial parantheses 
+               (.)                 # 1 code for interpolation type
+               \s*                  
+               ( ([[:^blank:]]+?) \s* = \s* )?    # 2 3 possible binding
+               (.+?)               # 4 definition
+               \s*
+               \}\}
+               "
+        )
+        .unwrap();
+    }
+
+    // displaymode
+    let (start_math, end_math) = marker_math(is_displaymode(&line));
+
+    // it is a cursor/offset in line
+    let mut it: usize = 0;
+    
+    for cap in RE_INTERPOLATION.captures_iter(&line) {
+        // pass everythin before interpolation
+        let m = cap.get(0).unwrap();
+        output_vec.push(decode_line(&line[it..m.start()]));
+
+        //println!("\n\nreading line: {:?}", &line);
+        let value: Expression = Expression::from(&decode_line(&cap[4]));
+        //println!("Expression: {:?}", value);
+
+        // binding
+        let var_name: String = match cap.get(3) {
+            Some(var) => decode_line(var.as_str()),
+            None => String::new(),
+        };
+
+        if !var_name.is_empty() {
+            // there is binding
+
+            match vars.get(&var_name) {
+                Some(value_dict) => {
+                    let v1 = value.value(vars);
+                    let v2 = value_dict.value(vars);
+
+                    if (v1.value - v2.value).abs() > 1e-5 || v1.unit != v2.unit {
+                        panic!("Attempt of overwrite variable: {:?}. Old value: {:?}={} and new value: {:?}={}", var_name, value_dict, value_dict.value(vars), value, value.value(vars));
+                    }
+                }
+                None => {
+                    vars.insert(var_name.clone(), value.clone());
+                }
+            }
+        }
+
+        // printing/inyecting
+        match &cap[1] {
+            "." => {
+                // Shows only the value
+                output_vec.push(start_math.to_string());
+                if !var_name.is_empty() {
+                    output_vec.push(format!("{} = ", var_name));
+                }
+                output_vec.push(format!("{}", value.value(&vars)));
+                output_vec.push(end_math.to_string());
+            }
+            "," => {
+                // show only the calculation
+                output_vec.push(start_math.to_string());
+                if !var_name.is_empty() {
+                    output_vec.push(format!("{} = ", var_name));
+                }
+                output_vec.push(value.show());
+                output_vec.push(end_math.to_string());
+            }
+            ";" => {
+                // calculation and later the value
+                output_vec.push(start_math.to_string());
+                if !var_name.is_empty() {
+                    output_vec.push(format!("{} = ", var_name));
+                }
+                output_vec.push(value.show());
+                output_vec.push(String::from(" = "));
+                output_vec.push(format!("{}", value.value(&vars)));
+                output_vec.push(end_math.to_string());
+            }
+            "!" => {
+                // Inject numeric value
+                if !var_name.is_empty() {
+                    output_vec.push(format!("{}=", var_name));
+                }
+                output_vec.push(format!("{}", value.value(&vars).value));
+            }
+            "_" => {} // Make calculation but doesn't show anything
+            _ => {
+                println!("Desconocido: \n\t{:?}", value);
+            }
+        }
+
+        it = m.end();
+    }
+    if it < line.len() {
+        output_vec.push(decode_line(&line[it..]));
+    }
+
+    // no match. all in_line into output
+    if output_vec.is_empty() {
+        output_vec.push(decode_line(&line));
+    }
+
+    output_vec.join("")
+}
+
+fn is_displaymode(line: &str) -> bool {
+    lazy_static! {
+        static ref RE_ISDISPLAY: Regex = Regex::new(
+        r"(?xi)
+            ^ 
+            [^[:alnum:]]*     
+            \{\{
+            (.*)               # 1
+            \}\}
+            [^[:alnum:]]*
+            $
+        ",
+        )
+        .unwrap();
+    }
+
+    match RE_ISDISPLAY.captures(line) {
+        Some(matches) => !matches[1].contains("}}"),
+        None => false,
+    }
+}
+
+fn marker_math(displaymode: bool) -> (&'static str, &'static str) {
+    if displaymode {
+        ("\"\"\"\\[ ", " \\]\"\"\"")
+    } else {
+        ("\"\"\"\\( ", " \\)\"\"\"")
+    }
+}
+
+//-------------------------
+
+fn encode_line(string: &str) -> String {
+    string
+        .replace("\\\\", "\\0")
+        .replace("\\{", "\\a")
+        .replace("\\}", "\\b")
+}
+
+fn decode_line(string: &str) -> String {
+    string
+        .replace("\\b", "}")
+        .replace("\\a", "{")
+        .replace("\\0", "\\")
+}
+
+
+//--------------------------------------------------------------------------------
+
+#[derive(Debug,Clone)]
+pub struct Passage {
+    previous_bad: Vec<Gate>,
+    text: Gate,
+    post_bad: Vec<Gate>,
+}
+
+#[derive(Debug,Clone)]
+enum PassageElem {
+    None,
+    Passage(Passage),
+    Sequential(Vec<PassageElem>),
+    Concurrent(Vec<PassageElem>),
+    Alternative(Vec<PassageElem>),
+}
+
+pub struct Exercise {
+    title: String,
+    passages: PassageElem
+}
+
+pub fn load_exercise(file: &Path) -> Result<Exercise> {
+    let contents = fs::read_to_string(file).expect("Unable to read file");
+    let docs = YamlLoader::load_from_str(&contents).unwrap();
+    let doc = &docs[0];
+
+    let variables = DictVariables::new();
+
+    let title = doc["title"].as_str().unwrap().to_owned();
+    println!("\ntitle: {:?}",title);
+
+    println!("\ndocs: {:?}", doc);
+    let passages = convert_yaml(&doc["passages"], variables);
+    println!("\npassages: {:?}", passages);
+    
+
+    Ok(Exercise { title, passages: passages.0 })
+}
+
+fn unique_key(hash: &Hash) -> Option<&str> {
+    if hash.len() != 1 {
+        return None;
+    }
+
+    return Some(hash.front().unwrap().0.as_str().unwrap());
+}
+
+fn convert_yaml(yaml: &Yaml, dictionary: DictVariables) -> (PassageElem, DictVariables) {
+    let (output,vars) = match yaml {
+        Yaml::Hash(hash) => match unique_key(hash) {
+                Some("pass") => convert_pass(&yaml["pass"],dictionary),
+                Some("seq") => convert_seq(yaml["seq"].as_vec().unwrap(),dictionary),
+                Some("alt") => convert_seq(yaml["alt"].as_vec().unwrap(),dictionary),
+                Some("con") => convert_seq(yaml["con"].as_vec().unwrap(),dictionary),
+                _ => panic!("I don't know how to process {:?}", hash)
+            }
+        _ => panic!("I don't know how to process {:?}", yaml)
+    };
+
+    (output, vars)
+}
+
+fn convert_pass(pass: &Yaml, dictionary: DictVariables) -> (PassageElem, DictVariables) {
+    println!("\npass: {:?}", pass);
+
+    let text = Gate::from(pass["text"].as_str().unwrap(), &dictionary);
+
+    let previous_bad = vec![];
+    let post_bad = vec![];
+
+    let vars = text.variables.clone();
+
+    println!("\n text: {:?}", text);
+    (PassageElem::Passage(Passage{previous_bad, text, post_bad}), vars)
+}
+
+fn convert_seq(elems: &Vec<Yaml>, dictionary: DictVariables) -> (PassageElem, DictVariables) {
+    let mut dict = dictionary.clone();
+    let mut passages = Vec::<PassageElem>::new();
+
+    println!("\nelems: {:?}", elems);
+    for elem in elems {
+        println!("\nelem: {:?}", elem);
+        let (passelem, ndict) = convert_yaml(elem, dict);
+        dict = ndict;
+        passages.push(passelem)
+    }
+    (PassageElem::Sequential(passages), dict)
+}
+
+
+
+/*
+
+
+// --------------------------------------------------------------------------------
+// Old content
 
 // Some constants
 
@@ -23,16 +366,6 @@ static LENGTH_EXPLANATION: usize = 2;
 // * a set of possible next steps (some true and some false)
 // * a mark of end of passage.
 
-// Gate: info about an option
-#[derive(Debug, Clone)]
-pub struct Gate {
-    text: String,
-    explanation: String,
-    good: bool,
-    variables: DictVariables,
-}
-
-impl Gate {}
 
 #[derive(Debug, PartialEq, Eq)]
 enum ReadingPassageStatus {
@@ -284,184 +617,6 @@ impl Passage {
 }
 
 //-------------------------
-fn encode_line(string: &str) -> String {
-    string
-        .replace("\\\\", "\\0")
-        .replace("\\{", "\\a")
-        .replace("\\}", "\\b")
-}
-
-fn decode_line(string: &str) -> String {
-    string
-        .replace("\\b", "}")
-        .replace("\\a", "{")
-        .replace("\\0", "\\")
-}
-
-//-------------------------
-fn process_line(
-    line: String,
-    to_global: bool,
-    global_vars: &mut DictVariables,
-    local_vars: &mut DictVariables,
-) -> String {
-    let mut output_vec = Vec::<String>::new();
-
-    let line = encode_line(&line);
-
-    lazy_static! {
-        static ref RE_INTERPOLATION: Regex = Regex::new(
-            r"(?x)                 # extended mode
-               \{\{                # initial parantheses 
-               (.)                 # 1 code for interpolation type
-               \s*                  
-               ( ([[:^blank:]]+?) \s* = \s* )?    # 2 3 possible binding
-               (.+?)               # 4 definition
-               \s*
-               \}\}
-               "
-        )
-        .unwrap();
-    }
-
-    // displaymode
-    let start_math : &str;
-    let end_math: &str;
-    if is_displaymode(&line) {
-        start_math = "\"\"\"\\[ ";
-        end_math = " \\]\"\"\"";
-    } else {
-        start_math = "\"\"\"\\( ";
-        end_math = " \\)\"\"\"";
-    }
-
-    // search for inline code
-    let mut it: usize = 0;
-    
-    for cap in RE_INTERPOLATION.captures_iter(&line) {
-        // pass everythin before interpolation
-        let m = cap.get(0).unwrap();
-        output_vec.push(decode_line(&line[it..m.start()]));
-
-        //println!("\n\nreading line: {:?}", &line);
-        let value: Expression = Expression::from(&decode_line(&cap[4]));
-        //println!("Expression: {:?}", value);
-
-        // binding
-        let var_name: String = match cap.get(3) {
-            Some(var) => decode_line(var.as_str()),
-            None => String::new(),
-        };
-
-        if !var_name.is_empty() {
-            // there is binding
-
-            if to_global {
-                match global_vars.get(&var_name) {
-                    Some(value_dict) => {
-                        if value != *value_dict {
-                            panic!("Variable: {:?} has value: {:?} in global dictionary but {:?} is new value", var_name, value_dict, value);
-                        }
-                    }
-                    None => {
-                        global_vars.insert(var_name.clone(), value.clone());
-                    }
-                }
-            } else {
-                match local_vars.get(&var_name) {
-                    Some(value_dict) => {
-                        if value != *value_dict {
-                            panic!("Variable: {:?} has value: {:?} in local dictionary but {:?} is new value", var_name, value_dict, value);
-                        }
-                    }
-                    None => {
-                        local_vars.insert(var_name.clone(), value.clone());
-                    }
-                }
-            }
-        }
-
-        // printing/inyecting
-        match &cap[1] {
-            "." => {
-                // Shows only the value
-                output_vec.push(start_math.to_string());
-                if !var_name.is_empty() {
-                    output_vec.push(format!("{} = ", var_name));
-                }
-                output_vec.push(format!("{}", value.value(&global_vars, &local_vars)));
-                output_vec.push(end_math.to_string());
-            }
-            "," => {
-                // show only the calculation
-                output_vec.push(start_math.to_string());
-                if !var_name.is_empty() {
-                    output_vec.push(format!("{} = ", var_name));
-                }
-                output_vec.push(value.show());
-                output_vec.push(end_math.to_string());
-            }
-            ";" => {
-                // calculation and later the value
-                output_vec.push(start_math.to_string());
-                if !var_name.is_empty() {
-                    output_vec.push(format!("{} = ", var_name));
-                }
-                output_vec.push(value.show());
-                output_vec.push(String::from(" = "));
-                output_vec.push(format!("{}", value.value(&global_vars, &local_vars)));
-                output_vec.push(end_math.to_string());
-            }
-            "!" => {
-                // Inject numeric value
-                if !var_name.is_empty() {
-                    output_vec.push(format!("{}=", var_name));
-                }
-                output_vec.push(format!("{}", value.value(&global_vars, &local_vars).value));
-            }
-            "_" => {} // Make calculation but doesn't show anything
-            _ => {
-                println!("Desconocido: \n\t{:?}", value);
-            }
-        }
-
-        it = m.end();
-    }
-    if it < line.len() {
-        output_vec.push(decode_line(&line[it..]));
-    }
-
-    // no match. all in_line into output
-    if output_vec.is_empty() {
-        output_vec.push(decode_line(&line));
-    }
-
-    output_vec.join("")
-}
-
-fn is_displaymode(line: &str) -> bool {
-    lazy_static! {
-        static ref RE_ISDISPLAY: Regex = Regex::new(
-        r"(?xi)
-            ^ 
-            [^[:alnum:]]*     
-            \{\{
-            (.*)               # 1
-            \}\}
-            [^[:alnum:]]*
-            $
-        ",
-        )
-        .unwrap();
-    }
-
-    match RE_ISDISPLAY.captures(line) {
-        Some(matches) => !matches[1].contains("}}"),
-        None => false,
-    }
-}
-
-//-------------------------
 
 fn build_option_msg(order: usize, next_link: &str, text: &str) -> String {
     //TODO I18N
@@ -528,3 +683,5 @@ impl fmt::Display for PassageTitles {
         }
     }
 }
+
+*/

@@ -1,0 +1,42 @@
+---
+title: Agrupación de resistencias
+
+passages:
+  seq:
+    - pass:
+        text: |
+          Sean tres resistencias según la figura (falta): {{,R_1=100ohm}}, {{,R_2=200ohm}} (en serie) y {{,R_3=300ohm}} 
+          !en paralelo con las dos anteriores.
+
+          Determinar la intensidad que pasa por todas las resistencias si la tensión en los extremos de {{,R_3}} es {{,V=10V}}. 
+    - alt:
+      - seq:
+          - con:
+              - pass:
+                  text: |
+                    Se calcula la intensidad por {{,R_1}}
+                    ...
+                    Para ello, {{;I_1= V R_1 ohm_law_VR.}}
+              - seq:
+                  - pass:
+                      pre_bad:
+                        - |
+                          se calcula la resistencia equivalente {{,R_{12} = R_1 R_2 parallel}}
+                          ---
+                          El paralelo se emplea cuando las resistencias están en paralelo y no en serie.
+                      text: "se calcula la resistencia equivalente {{,R_{12}= R_1 R_2 + }}."
+                  - pass:
+                      text: se calcula la intensidad por la equivalente {{,I_{12} = V R_{12} ohm_law_VR.}}
+
+          - pass:
+              pre_bad:
+                - "la intensidad global es el producto de las dos intensidades {{,I= I_1 I_{12} * A : }}"
+                - "la intensidad global es la media de las dos intensidades {{,I= I_1 I_{12} + 2 / A : }}"
+              text: "la intensidad global es la suma de las dos intensidades {{,I= I_1 I_{12} +}}"
+      - seq:
+        - pass:
+            text: "Se calcula la resistencia equivalente {{,R_{12} = R_1 R_2 +}}"
+        - pass:
+            text: "Se calcula la resistencia equivalente {{,R_{123} = R_{12} R_3 parallel}}"
+        - pass:
+            text: "Se calcula la intensidad por la resistencia {{;I = V R_{123} ohm_law_VR.}}"

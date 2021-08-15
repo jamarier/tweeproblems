@@ -125,23 +125,21 @@ impl Expression {
         }
     }
 
-    pub fn value(&self, global_dict: &DictVariables, local_dict: &DictVariables) -> Magnitude {
+    pub fn value(&self, dict: &DictVariables) -> Magnitude {
         match self {
             Expression::Magnitude(mag) => mag.clone(),
             Expression::Variable(name) => {
-                if let Some(expr) = global_dict.get(name) {
-                    expr.value(global_dict, local_dict)
-                } else if let Some(expr) = local_dict.get(name) {
-                    expr.value(global_dict, local_dict)
+                if let Some(expr) = dict.get(name) {
+                    expr.value(dict)
                 } else {
-                    panic!("Variable {} not in dictionaries", name)
+                    panic!("Variable {} not in dictionary", name)
                 }
             }
             Expression::Add(operands) => {
                 let mut result = Magnitude::new(0.0, String::from("¿?"));
 
                 for op in operands {
-                    let mag = op.value(global_dict, local_dict);
+                    let mag = op.value(dict);
                     if !(result.unit == "¿?" || mag.unit == "¿?" || result.unit == mag.unit) {
                         panic!("Wrong units adding {:?}.\n  Current result: {:?},\n  next operand:   {:?}\n",operands, result, mag);
                     }
@@ -158,14 +156,14 @@ impl Expression {
                 result
             }
             Expression::Neg(expr) => {
-                let mag = expr.value(global_dict, local_dict);
+                let mag = expr.value(dict);
                 Magnitude::new(-1.0 * mag.value, mag.unit)
             }
             Expression::Prod(operands) => {
                 let mut result = Magnitude::new(1.0, String::from("¿?"));
 
                 for op in operands {
-                    let mag = op.value(global_dict, local_dict);
+                    let mag = op.value(dict);
 
                     result.value *= mag.value;
                 }
@@ -173,13 +171,13 @@ impl Expression {
                 result
             }
             Expression::Div(operands) => {
-                let num = operands[0].value(global_dict, local_dict);
-                let den = operands[1].value(global_dict, local_dict);
+                let num = operands[0].value(dict);
+                let den = operands[1].value(dict);
 
                 Magnitude::new(num.value / den.value, String::from("¿?"))
             }
             Expression::Unit(unit, expr) => {
-                let mut mag = expr.value(global_dict, local_dict);
+                let mut mag = expr.value(dict);
                 if &mag.unit != "¿?" && &mag.unit != unit {
                     panic!("Expression {:?} hasn't unit {}", expr, unit);
                 }
