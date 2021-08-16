@@ -1,8 +1,7 @@
 use anyhow::{bail, Result};
 use clap::{App, Arg};
-//use std::fs::{write, File};
+use std::fs::write;
 use std::path::{Path, PathBuf};
-use uuid::Uuid;
 
 mod expression;
 mod formulas;
@@ -36,6 +35,8 @@ fn main() -> Result<()> {
 
     let render = exercise.render();
     println!("\nrender {}",render);
+
+    write(output_file, render)?;
 
     Ok(())
     /*

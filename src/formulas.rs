@@ -12,6 +12,6 @@ lazy_static! {
         "ohm_law_V.I" => " A : I !  V : V !  V @ I @ /    ohm : ",
         "ohm_law_VR." => " ohm : R !    V : V !     V @ R @ /   A : ",
 
-        "parallel" => " ohm : R1 !  ohm : R2 ! R1 @ R2 @ * R1 @ R2 @ + / ohm : "
+        "parallel" => " ohm : R2 !  ohm : R1 ! R1 @ R2 @ * R1 @ R2 @ + / ohm : "
     };
 }

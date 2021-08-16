@@ -2,9 +2,9 @@
 
 use anyhow::{Result};
 use lazy_static::lazy_static;
-//use rand::seq::SliceRandom;
+use rand::seq::SliceRandom;
 use regex::Regex;
-//use std::fmt;
+use std::fmt;
 use std::fs;
 //use std::fs::File;
 //use std::io::BufReader;
@@ -66,8 +66,17 @@ impl Gate {
         }
 
         Gate {text: text.join("\n"), follow: follow.join("\n"), note: note.join("\n"), variables}
-
     }
+
+    fn passage_note(&self, current_link: &PassageTitle, msg : &str, output_link: &PassageTitle) -> String {
+        format!("\n:: {}\n\n{}\n\n[[ {} -> {} ]]\n\n\n", current_link, self.note, msg, output_link)
+    }
+
+    fn passage_choice(&self, next_link: &PassageTitle) -> String {
+        // TODO I18N
+        format!("[[ Opción: -> {} ]]\n\n{}\n\n", next_link, self.text)
+    }
+
 }
 
 enum GateStatus {
@@ -253,10 +262,78 @@ pub struct Passage {
     post_bad: Vec<Gate>,
 }
 
+impl Passage {
+
+    fn render(&self, accumulated_text: &str, current_link: PassageTitle, mut next_pe: Vec<PassageElem>) -> String {
+        let mut output = String::new();
+        let mut suboutput = String::new();
+        let mut accumulated_text = accumulated_text.to_string();
+
+        /* estoy hay que añadirlo al final del passage, no al inicio.
+         if !passage.text.note.is_empty() {
+            output = output + ":: " + current_link + "\n";
+            current_link += "e";
+            // TODO I18N
+            output += &format!("{}\n[ Continuar -> {} ]\n\n",passage.text.note, current_link);
+        }
+        */
+        
+        output = output + "\n:: " + &current_link.to_string() + "\n\n";
+        accumulated_text = accumulated_text + &self.text.text + "\n";
+        accumulated_text = accumulated_text + &self.text.follow + "\n"; 
+
+        output += &accumulated_text;
+
+        let next = match next_pe.pop() {
+            Some(v) => v,
+            None => {
+            // TODO I18N
+            output += "\n[Volver al inicio -> Start]\n\n";
+            return output;
+            }
+        };
+
+        
+        // analisis of gates
+        let mut gates_vecstring : Vec<String> = vec![];
+        let mut sub_link= current_link.clone();
+        sub_link.add_level();
+
+        let mut bad_gates = self.post_bad.clone();
+        bad_gates.extend(next.previous_bad());
+
+        for bad_gate in bad_gates {
+            gates_vecstring.push(bad_gate.passage_choice(&sub_link));
+
+            // TODO I18N
+            suboutput += &bad_gate.passage_note(&sub_link, "Volver a intentarlo", &current_link);
+
+            sub_link.inc();
+        }
+
+        
+        // randomize of gates and output
+        gates_vecstring.shuffle(&mut rand::thread_rng());
+
+        if gates_vecstring.len() > 1 {
+            output += "Marque una opción que considere correcta (puede haber más de una)\n\n";
+        }
+        output += &gates_vecstring.join("\n");
+
+
+        output += &suboutput;
+
+        output
+    }
+
+
+}
+
+
 #[derive(Debug,Clone)]
 enum PassageElem {
     Passage(Passage),
-    Sequential(Vec<PassageElem>),
+    Sequence(Vec<PassageElem>),
     Concurrent(Vec<PassageElem>),
     Alternative(Vec<PassageElem>),
 }
@@ -265,7 +342,7 @@ impl PassageElem {
     fn previous_bad(&self) -> Vec<Gate> {
         match self {
             PassageElem::Passage(p) => p.previous_bad.clone(),
-            PassageElem::Sequential(v) => v.first().unwrap().previous_bad(),
+            PassageElem::Sequence(v) => v.first().unwrap().previous_bad(),
             PassageElem::Concurrent(v) => {
                 let mut output = vec![];
                 for e in v {
@@ -286,7 +363,7 @@ impl PassageElem {
     fn gate_text(&self) -> Vec<Gate> {
         match self {
             PassageElem::Passage(p) => vec![p.text.clone()],
-            PassageElem::Sequential(v) => v.first().unwrap().gate_text(),
+            PassageElem::Sequence(v) => v.first().unwrap().gate_text(),
             PassageElem::Concurrent(v) => {
                 let mut output = vec![];
                 for e in v {
@@ -308,35 +385,32 @@ impl PassageElem {
     fn post_bad(&self) -> Vec<Gate> {
         match self {
             PassageElem::Passage(p) => p.post_bad.clone(),
-            PassageElem::Sequential(v) => v.last().unwrap().post_bad(),
-            PassageElem::Concurrent(_) => vec![],
-            PassageElem::Alternative(_) => vec![],
+            PassageElem::Sequence(v) => v.last().unwrap().post_bad(),
+            _ => vec![]
         }
     }
 
-    fn render(&self,base_link: &str, previous: &str, last_link: (&str,&str)) -> String {
-        let mut output : Vec<String> = vec![];
-        let mut suboutput : Vec<String> = vec![];
+    fn render(&self,accumulated_text: &str, current_link: PassageTitle, next_pe: Vec<PassageElem>) -> String {
+        let mut output = String::new();
 
-        output.push(format!(":: {}",base_link));
-        output.push(previous.tostring());
-        for gt in self.gate_text() {
-            output.push(gt.
+        match self {
+            PassageElem::Passage(p) => p.render(accumulated_text, current_link, next_pe), 
+            PassageElem::Sequence(v) => render_sequence(v,accumulated_text, current_link, next_pe),
+            _ => panic!("I don't know how to render {:?}", self)
         }
 
-
-        match &self {
-            PassageElem::Passage(p) => {
-                let mut rendered : Vec<String> = vec![previous.to_string()];
-                let gate_text = self.
-                output.extend(text);
-            }
-            _ => output.push(String::from("NO SE AUN")),
-        }
-
-        output.extend(suboutput);
-        output.join("\n")
     }
+}
+
+fn render_sequence(vector: &[PassageElem], accumulated_text: &str, current_link: PassageTitle, mut next_pe: Vec<PassageElem>) -> String {
+    let mut vector : Vec<PassageElem> = vector.to_vec();
+    vector.reverse();
+
+    let first = vector.pop().unwrap();
+
+    next_pe.extend(vector);
+
+    first.render(accumulated_text, current_link, next_pe)
 }
 
 pub struct Exercise {
@@ -361,7 +435,14 @@ impl Exercise {
     }
 
     pub fn render(&self) -> String {
-        let mut output : Vec<String> = Vec::new();
+        let mut output = String::new();
+        let passage_title = PassageTitle::new();
+
+        output += &preface(&self.title);
+        output += &self.passages.render(&String::new(), passage_title, vec![]);
+
+
+/*        let mut output : Vec<String> = Vec::new();
 
         output.extend(preface(&self.title));
 
@@ -369,14 +450,15 @@ impl Exercise {
         output.push(self.passages.render("Start", &String::new(), ("Ir al inicio","Start")));
 
         output.join("\n")
+        */
+        
+        output
     }
 
 }
 
-fn preface(title: &str) -> Vec<String> {
-    let mut output = Vec::new();
-
-    output.push(format!(
+fn preface(title: &str) -> String {
+    let output = format!(
         "::StoryTitle
 
 {}
@@ -400,10 +482,11 @@ importScripts([
 ",
         title,
         Uuid::new_v4()
-    ));
+    );
 
     output
 }
+
 fn unique_key(hash: &Hash) -> Option<&str> {
     if hash.len() != 1 {
         return None;
@@ -414,6 +497,7 @@ fn unique_key(hash: &Hash) -> Option<&str> {
 
 fn convert_yaml(yaml: &Yaml, dictionary: &DictVariables) -> (PassageElem, DictVariables) {
     let (output,vars) = match yaml {
+        Yaml::Array(array) => convert_seq(yaml.as_vec().unwrap(),dictionary),
         Yaml::Hash(hash) => match unique_key(hash) {
                 Some("pass") => convert_pass(&yaml["pass"],dictionary),
                 Some("seq") => convert_seq(yaml["seq"].as_vec().unwrap(),dictionary),
@@ -458,7 +542,7 @@ fn convert_seq(elems: &[Yaml], dictionary: &DictVariables) -> (PassageElem, Dict
         dict = ndict;
         passages.push(passelem)
     }
-    (PassageElem::Sequential(passages), dict)
+    (PassageElem::Sequence(passages), dict)
 }
 
 fn convert_con(elems: &[Yaml], dictionary: &DictVariables) -> (PassageElem, DictVariables) {
@@ -488,6 +572,42 @@ fn convert_alt(elems: &[Yaml], dictionary: &DictVariables) -> (PassageElem, Dict
     (PassageElem::Alternative(passages), dict)
 }
 
+
+//-------------------------
+
+#[derive(Debug, Clone)]
+pub struct PassageTitle(Vec<u16>); 
+
+impl PassageTitle {
+    pub fn new() -> Self {
+        PassageTitle(vec![0])
+    }
+
+    pub fn inc(&mut self) {
+        let number = self.0.pop().unwrap();
+
+        self.0.push(number+1);
+    }
+
+    pub fn add_level(&mut self) {
+        self.0.push(0);
+    }
+
+}
+
+impl fmt::Display for PassageTitle {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.0.len()==1 && self.0[0] == 0 {
+            write!(f,"Start")
+        } else {
+            let mut output = String::from("Chapter");
+            for digit in &self.0 {
+                output = format!("{}-{}",output,digit);
+            }
+            write!(f,"{}",output)
+        }
+    }
+}
 
 
 /*
@@ -777,55 +897,6 @@ fn build_explanation_gate(
         "\n:: {}\n{}\n[[{} -> {}]]\n",
         current_link, explanation, mesg, next_link
     )
-}
-
-//-------------------------
-
-#[derive(Debug, Clone)]
-pub struct PassageTitles {
-    chapter: u16,
-    section: u16,
-}
-
-impl PassageTitles {
-    pub fn new() -> Self {
-        PassageTitles {
-            chapter: 0,
-            section: 0,
-        }
-    }
-
-    pub fn inc_chapter(&mut self) {
-        self.chapter += 1;
-        self.section = 0;
-    }
-
-    pub fn show_next_chapter(&self) -> String {
-        let mut temp = self.clone();
-        temp.inc_chapter();
-        temp.to_string()
-    }
-
-    pub fn inc_section(&mut self) -> String {
-        self.section += 1;
-        self.to_string()
-    }
-}
-
-impl fmt::Display for PassageTitles {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let base: String = if self.chapter == 0 {
-            String::from("Start")
-        } else {
-            format!("Chapter-{}", self.chapter)
-        };
-
-        if self.section == 0 {
-            write!(formatter, "{}", base)
-        } else {
-            write!(formatter, "{}_{}", base, self.section)
-        }
-    }
 }
 
 */
