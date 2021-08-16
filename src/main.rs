@@ -1,8 +1,6 @@
 use anyhow::{bail, Result};
 use clap::{App, Arg};
 //use std::fs::{write, File};
-use std::fs::{File};
-use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
@@ -12,7 +10,7 @@ mod magnitude;
 mod passage;
 
 //use crate::expression::DictVariables;
-//use crate::passage::{Passage};
+use crate::passage::{Exercise};
 
 fn main() -> Result<()> {
     let args = App::new("TwineProblems")
@@ -34,9 +32,12 @@ fn main() -> Result<()> {
     println!("output file: {:?}", output_file);
 
 
-    passage::load_exercise(&input_file);
+    let exercise = Exercise::load_exercise(&input_file)?;
 
-    return Ok(());
+    let render = exercise.render();
+    println!("\nrender {}",render);
+
+    Ok(())
     /*
     // Open the file in read-only mode (ignoring errors).
     let mut line_iterator = open_input_file(input_file)?;
@@ -103,56 +104,3 @@ fn generate_output_filename(input: &Path) -> PathBuf {
     output
 }
 
-fn open_input_file(input: &Path) -> Result<std::io::Lines<BufReader<File>>> {
-    let file = File::open(input)?;
-    let reader = BufReader::new(file);
-
-    Ok(reader.lines())
-}
-
-fn locate_title(iterator: &mut std::io::Lines<BufReader<File>>) -> Result<String> {
-    let mut title = String::new();
-
-    while title.is_empty() {
-        let line = match iterator.next() {
-            None => bail!("Input file has not text/title"),
-            Some(line) => line,
-        }?;
-
-        title = String::from(line.trim());
-    }
-
-    Ok(title)
-}
-
-fn preface(title: &str) -> Vec<String> {
-    let mut output = Vec::new();
-
-    output.push(format!(
-        "::StoryTitle
-
-{}
-
-:: StoryData
-{{
-    \"ifid\": \"{}\"
-}}
-
-:: UserScripts [script]
-
-/* Import the mathjax library. */
-importScripts([
-    \"https://polyfill.io/v3/polyfill.min.js?features=es6\",
-    \"https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js\"
-]).then(() => {{
-        $(document).on(':passageinit', () => window.location.reload(false) );
-    }})
-    .catch(err => console.error(`MathJax load error: ${{err}}`));
-
-",
-        title,
-        Uuid::new_v4()
-    ));
-
-    output
-}

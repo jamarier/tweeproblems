@@ -11,6 +11,7 @@ use std::fs;
 use yaml_rust::{Yaml,YamlLoader};
 use yaml_rust::yaml::{Hash};
 use std::path::Path;
+use uuid::Uuid;
 
 use crate::expression::{DictVariables, Expression};
 
@@ -25,7 +26,6 @@ pub struct Gate {
 
 impl Gate {
     fn from(string : &str, variables: &DictVariables) -> Self {
-        println!("Gate::From {:?}", string);
 
         let mut text = Vec::<String>::new();
         let mut follow = Vec::<String>::new();
@@ -35,9 +35,9 @@ impl Gate {
 
         let mut status = GateStatus::Text;
 
-        let lines = string.split("\n");
+        let lines = string.split('\n');
         for mut line in lines {
-            if let Some(verbatim) = line_start_with("!",line) {
+            if let Some(verbatim) = line.strip_prefix('!') {
                 line = verbatim;
                 match status {
                     GateStatus::Text => text.push(line.to_string()),
@@ -47,13 +47,13 @@ impl Gate {
                 continue;
             }
             
-            if let Some(rest) = line_start_with("___",line) {
+            if let Some(rest) = line.strip_prefix("___") {
                 status = GateStatus::Text;
                 line = rest;
-            } else if let Some(rest) = line_start_with("...",line) {
+            } else if let Some(rest) = line.strip_prefix("...") {
                 status = GateStatus::Follow;
                 line = rest;
-            } else if let Some(rest) = line_start_with("---",line) {
+            } else if let Some(rest) = line.strip_prefix("---") {
                 status = GateStatus::Note;
                 line = rest;
             }
@@ -65,16 +65,8 @@ impl Gate {
             }
         }
 
-        Gate {text: text.join("\n"), follow: follow.join("\n"), note: note.join("\n"), variables: variables}
+        Gate {text: text.join("\n"), follow: follow.join("\n"), note: note.join("\n"), variables}
 
-    }
-}
-
-fn line_start_with<'a,'b>( preffix: &'a str, line : &'b str) -> Option<&'b str> {
-    if line.starts_with(preffix) {
-        Some(&line[preffix.len()..])
-    } else {
-        None
     }
 }
 
@@ -263,11 +255,88 @@ pub struct Passage {
 
 #[derive(Debug,Clone)]
 enum PassageElem {
-    None,
     Passage(Passage),
     Sequential(Vec<PassageElem>),
     Concurrent(Vec<PassageElem>),
     Alternative(Vec<PassageElem>),
+}
+
+impl PassageElem {
+    fn previous_bad(&self) -> Vec<Gate> {
+        match self {
+            PassageElem::Passage(p) => p.previous_bad.clone(),
+            PassageElem::Sequential(v) => v.first().unwrap().previous_bad(),
+            PassageElem::Concurrent(v) => {
+                let mut output = vec![];
+                for e in v {
+                    output.extend(e.previous_bad());
+                }
+                output
+            }
+            PassageElem::Alternative(v) => {
+                let mut output = vec![];
+                for e in v {
+                    output.extend(e.previous_bad());
+                }
+                output
+            }
+        }
+    }
+
+    fn gate_text(&self) -> Vec<Gate> {
+        match self {
+            PassageElem::Passage(p) => vec![p.text.clone()],
+            PassageElem::Sequential(v) => v.first().unwrap().gate_text(),
+            PassageElem::Concurrent(v) => {
+                let mut output = vec![];
+                for e in v {
+                    output.extend(e.gate_text());
+                }
+                output
+            }
+            PassageElem::Alternative(v) => {
+                let mut output = vec![];
+                for e in v {
+                    output.extend(e.gate_text());
+                }
+                output
+            }
+
+        }
+    }
+
+    fn post_bad(&self) -> Vec<Gate> {
+        match self {
+            PassageElem::Passage(p) => p.post_bad.clone(),
+            PassageElem::Sequential(v) => v.last().unwrap().post_bad(),
+            PassageElem::Concurrent(_) => vec![],
+            PassageElem::Alternative(_) => vec![],
+        }
+    }
+
+    fn render(&self,base_link: &str, previous: &str, last_link: (&str,&str)) -> String {
+        let mut output : Vec<String> = vec![];
+        let mut suboutput : Vec<String> = vec![];
+
+        output.push(format!(":: {}",base_link));
+        output.push(previous.tostring());
+        for gt in self.gate_text() {
+            output.push(gt.
+        }
+
+
+        match &self {
+            PassageElem::Passage(p) => {
+                let mut rendered : Vec<String> = vec![previous.to_string()];
+                let gate_text = self.
+                output.extend(text);
+            }
+            _ => output.push(String::from("NO SE AUN")),
+        }
+
+        output.extend(suboutput);
+        output.join("\n")
+    }
 }
 
 pub struct Exercise {
@@ -275,24 +344,66 @@ pub struct Exercise {
     passages: PassageElem
 }
 
-pub fn load_exercise(file: &Path) -> Result<Exercise> {
-    let contents = fs::read_to_string(file).expect("Unable to read file");
-    let docs = YamlLoader::load_from_str(&contents).unwrap();
-    let doc = &docs[0];
+impl Exercise {
+    pub fn load_exercise(file: &Path) -> Result<Exercise> {
+        let contents = fs::read_to_string(file).expect("Unable to read file");
+        let docs = YamlLoader::load_from_str(&contents).unwrap();
+        let doc = &docs[0];
 
-    let variables = DictVariables::new();
+        let variables = DictVariables::new();
 
-    let title = doc["title"].as_str().unwrap().to_owned();
-    println!("\ntitle: {:?}",title);
+        let title = doc["title"].as_str().unwrap().to_owned();
+        let passages = convert_yaml(&doc["passages"], &variables);
+        println!("\npassages: {:?}", passages);
+        
 
-    println!("\ndocs: {:?}", doc);
-    let passages = convert_yaml(&doc["passages"], &variables);
-    println!("\npassages: {:?}", passages);
-    
+        Ok(Exercise { title, passages: passages.0 })
+    }
 
-    Ok(Exercise { title, passages: passages.0 })
+    pub fn render(&self) -> String {
+        let mut output : Vec<String> = Vec::new();
+
+        output.extend(preface(&self.title));
+
+        // TODO: I18N
+        output.push(self.passages.render("Start", &String::new(), ("Ir al inicio","Start")));
+
+        output.join("\n")
+    }
+
 }
 
+fn preface(title: &str) -> Vec<String> {
+    let mut output = Vec::new();
+
+    output.push(format!(
+        "::StoryTitle
+
+{}
+
+:: StoryData
+{{
+    \"ifid\": \"{}\"
+}}
+
+:: UserScripts [script]
+
+/* Import the mathjax library. */
+importScripts([
+    \"https://polyfill.io/v3/polyfill.min.js?features=es6\",
+    \"https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js\"
+]).then(() => {{
+        $(document).on(':passageinit', () => window.location.reload(false) );
+    }})
+    .catch(err => console.error(`MathJax load error: ${{err}}`));
+
+",
+        title,
+        Uuid::new_v4()
+    ));
+
+    output
+}
 fn unique_key(hash: &Hash) -> Option<&str> {
     if hash.len() != 1 {
         return None;
@@ -313,14 +424,10 @@ fn convert_yaml(yaml: &Yaml, dictionary: &DictVariables) -> (PassageElem, DictVa
         _ => panic!("I don't know how to process {:?}", yaml)
     };
 
-    println!("\n{:?}",output);
-
     (output, vars)
 }
 
 fn convert_pass(pass: &Yaml, dictionary: &DictVariables) -> (PassageElem, DictVariables) {
-    println!("\npass: {:?}", pass);
-
     let text = Gate::from(pass["text"].as_str().unwrap(), dictionary);
 
     let mut previous_bad = vec![];
@@ -342,13 +449,11 @@ fn convert_pass(pass: &Yaml, dictionary: &DictVariables) -> (PassageElem, DictVa
     (PassageElem::Passage(Passage{previous_bad, text, post_bad}), vars)
 }
 
-fn convert_seq(elems: &Vec<Yaml>, dictionary: &DictVariables) -> (PassageElem, DictVariables) {
+fn convert_seq(elems: &[Yaml], dictionary: &DictVariables) -> (PassageElem, DictVariables) {
     let mut dict = dictionary.clone();
     let mut passages = Vec::<PassageElem>::new();
 
-    println!("\nelems: {:?}", elems);
     for elem in elems {
-        println!("\nelem: {:?}", elem);
         let (passelem, ndict) = convert_yaml(elem, &dict);
         dict = ndict;
         passages.push(passelem)
@@ -356,29 +461,25 @@ fn convert_seq(elems: &Vec<Yaml>, dictionary: &DictVariables) -> (PassageElem, D
     (PassageElem::Sequential(passages), dict)
 }
 
-fn convert_con(elems: &Vec<Yaml>, dictionary: &DictVariables) -> (PassageElem, DictVariables) {
+fn convert_con(elems: &[Yaml], dictionary: &DictVariables) -> (PassageElem, DictVariables) {
     let base_dict = dictionary.clone();
     let mut dict = dictionary.clone();
     let mut passages = Vec::<PassageElem>::new();
 
-    println!("\nelems: {:?}", elems);
     for elem in elems {
-        println!("\nelem: {:?}", elem);
-        let (passelem, mut ndict) = convert_yaml(elem, &base_dict);
+        let (passelem, ndict) = convert_yaml(elem, &base_dict);
         dict.extend(ndict);
         passages.push(passelem)
     }
     (PassageElem::Concurrent(passages), dict)
 }
 
-fn convert_alt(elems: &Vec<Yaml>, dictionary: &DictVariables) -> (PassageElem, DictVariables) {
+fn convert_alt(elems: &[Yaml], dictionary: &DictVariables) -> (PassageElem, DictVariables) {
     let base_dict = dictionary.clone();
     let mut dict = dictionary.clone();
     let mut passages = Vec::<PassageElem>::new();
 
-    println!("\nelems: {:?}", elems);
     for elem in elems {
-        println!("\nelem: {:?}", elem);
         let (passelem, ndict) = convert_yaml(elem, &base_dict);
         dict = ndict;
         passages.push(passelem)
