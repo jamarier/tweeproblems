@@ -21,27 +21,39 @@ passages:
     - - con:
         - pass:
             text: |
-              Se calcula la intensidad por {{,R_1}}
+              Se calcula la intensidad por {{,R_3}}
               ...
-              Para ello, {{;I_1= V R_1 ohm_law_VR.}}
+              Para ello, 
+              {{;I_3= V R_3 ohm_law_VR.}}
         - - pass:
+              text: |
+                Con objeto de calcular la intensidad por la rama de las resistencia {{,R_1}} y {{,R_2}} se calcula la resistencia equivalente 
+                {{;R_{12}= R_1 R_2 + }}.
               pre_bad:
                 - |
-                  se calcula la resistencia equivalente {{,R_{12} = R_1 R_2 parallel}}
+                  se calcula la resistencia equivalente 
+                  {{,R_{12} = R_1 R_2 parallel}}
                   ---
                   El paralelo se emplea cuando las resistencias están en paralelo y no en serie.
-              text: "se calcula la resistencia equivalente {{,R_{12}= R_1 R_2 + }}."
           - pass:
-              text: se calcula la intensidad por la equivalente {{,I_{12} = V R_{12} ohm_law_VR.}}
+              text: |
+                se calcula la intensidad por la equivalente 
+                {{,I_{12} = V R_{12} ohm_law_VR.}}
 
       - pass:
+          text: "la intensidad global es la suma de las dos intensidades {{;I= I_{12} I_3 +}}"
           pre_bad:
             - "la intensidad global es el producto de las dos intensidades {{,I= I_1 I_{12} * A : }}"
             - "la intensidad global es la media de las dos intensidades {{,I= I_1 I_{12} + 2 / A : }}"
-          text: "la intensidad global es la suma de las dos intensidades {{,I= I_1 I_{12} +}}"
     - - pass:
-          text: "Se calcula la resistencia equivalente {{,R_{12} = R_1 R_2 +}}"
+          text: |
+            Con objeto de calcular la resistencia equivalente total, se calcula la resistencia equivalente 
+            {{;R_{12} = R_1 R_2 +}}
       - pass:
-          text: "Se calcula la resistencia equivalente {{,R_{123} = R_{12} R_3 parallel}}"
+          text: |
+            Se calcula la resistencia equivalente 
+            {{,R_{123} = R_{12} R_3 parallel}}
       - pass:
-          text: "Se calcula la intensidad por la resistencia {{;I = V R_{123} ohm_law_VR.}}"
+          text: |
+            Se calcula la intensidad por la resistencia 
+            {{;I = V R_{123} ohm_law_VR.}}

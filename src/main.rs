@@ -9,7 +9,7 @@ mod magnitude;
 mod passage;
 
 //use crate::expression::DictVariables;
-use crate::passage::{Exercise};
+use crate::passage::Exercise;
 
 fn main() -> Result<()> {
     let args = App::new("TwineProblems")
@@ -30,11 +30,9 @@ fn main() -> Result<()> {
     println!("input file: {:?}", input_file);
     println!("output file: {:?}", output_file);
 
-
     let exercise = Exercise::load_exercise(&input_file)?;
 
     let render = exercise.render();
-    println!("\nrender {}",render);
 
     write(output_file, render)?;
 
@@ -104,4 +102,3 @@ fn generate_output_filename(input: &Path) -> PathBuf {
 
     output
 }
-
