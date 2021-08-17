@@ -1,0 +1,33 @@
+---
+title: Agrupación de resistencias
+
+passages:
+  - pass:
+      text: |
+        Problem test discusing of elements.
+      post_bad: 
+        - This is a bad one
+        - |
+          Hint
+          ---
+          Very interesting hint
+  - pass:
+      text: |
+        GOOD ONE: Second step with note
+        ...
+        This is the follow. This part only is shown after the option is chosen
+        ---
+        This part is a temporal pass.
+      post_bad:
+        - bad one
+        - other bad
+  - pass:
+      text: |
+        More information
+  - alt:
+    - pass:
+        text: First Option
+    - pass:
+        text: Second Option
+  - pass:
+      text: end option

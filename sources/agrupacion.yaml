@@ -4,10 +4,11 @@ title: Agrupación de resistencias
 passages:
   - pass:
       text: |
-        Sean tres resistencias según la figura (falta): {{,R_1=100ohm}}, {{,R_2=200ohm}} (en serie) y {{,R_3=300ohm}} 
+        Sean tres resistencias según la figura (falta): {{,R_1=100ohm}} en serie con {{,R_2=200ohm}} y {{,R_3=300ohm}} 
         !en paralelo con las dos anteriores.
 
-        Determinar la intensidad que pasa circula por el conjunto si la tensión de alimentación es {{,V=10V}}. 
+        Determinar la intensidad que circula por el conjunto de las tres resistencias si la tensión de alimentación 
+        del mismo es de {{,V=10V}}. 
       post_bad: 
         - Como {{,V=10V}}, esto implica que {{,I=10A}}
         - |

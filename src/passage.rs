@@ -1,6 +1,6 @@
 // Passage generation
 
-use anyhow::{Result};
+use anyhow::{Result,bail};
 use lazy_static::lazy_static;
 use rand::seq::SliceRandom;
 use regex::Regex;
@@ -75,6 +75,10 @@ impl Gate {
     fn passage_choice(&self, next_link: &PassageTitle) -> String {
         // TODO I18N
         format!("[[ Opción: -> {} ]]\n\n{}\n\n", next_link, self.text)
+    }
+
+    fn has_note(&self) -> bool {
+        !self.note.is_empty()
     }
 
 }
@@ -264,7 +268,8 @@ pub struct Passage {
 
 impl Passage {
 
-    fn render(&self, accumulated_text: &str, current_link: PassageTitle, mut next_pe: Vec<PassageElem>) -> String {
+/*
+   fn render(&self, accumulated_text: &str, mut current_link: PassageTitle, mut next_pe: Vec<PassageElem>) -> String {
         let mut output = String::new();
         let mut suboutput = String::new();
         let mut accumulated_text = accumulated_text.to_string();
@@ -284,7 +289,7 @@ impl Passage {
 
         output += &accumulated_text;
 
-        let next = match next_pe.pop() {
+        let mut next = match next_pe.pop() {
             Some(v) => v,
             None => {
             // TODO I18N
@@ -294,11 +299,13 @@ impl Passage {
         };
 
         
-        // analisis of gates
         let mut gates_vecstring : Vec<String> = vec![];
+
+        // sub_links
         let mut sub_link= current_link.clone();
         sub_link.add_level();
 
+        // analysis of bad gates
         let mut bad_gates = self.post_bad.clone();
         bad_gates.extend(next.previous_bad());
 
@@ -311,7 +318,48 @@ impl Passage {
             sub_link.inc();
         }
 
-        
+        // analysis of good gates
+        while let PassageElem::Sequence(mut v) = next {
+            v.reverse();
+            next_pe.extend(v);
+            next = next_pe.pop().unwrap()
+        }
+
+        match next {
+            PassageElem::Passage(p) => {
+                current_link.inc();
+                let gate = p.text.clone();
+                if gate.has_note() {
+                    gates_vecstring.push(gate.passage_choice(&sub_link));
+                    suboutput += &gate.passage_note(&sub_link, "Continuar", &current_link);
+                    sub_link.inc();
+                } else {
+                    gates_vecstring.push(gate.passage_choice(&current_link));
+                }
+                suboutput += &p.render(&accumulated_text, current_link, next_pe);
+                
+            }
+            PassageElem::Alternative(alternatives) => {
+                current_link.inc();
+                current_link.add_level();
+                for alternative in alternatives {
+                    let gate = alternative.text.text.clone();
+                    if gate.has_note() {
+                        gates_vecstring.push(gate.passage_choice(&sub_link));
+                        suboutput += &gate.passage_note(&sub_link, "Continuar", &current_link);
+                        sub_link.inc();
+                    } else {
+                        gates_vecstring.push(gate.passage_choice(&current_link));
+                    }
+                    suboutput += &alternative.render(&accumulated_text, current_link, next_pe);
+                }
+
+                 
+            }
+            _ => panic!("Esta situación no es posible"),
+        }
+
+
         // randomize of gates and output
         gates_vecstring.shuffle(&mut rand::thread_rng());
 
@@ -325,10 +373,15 @@ impl Passage {
 
         output
     }
-
+*/
 
 }
 
+impl fmt::Display for Passage {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f,"P{{{}}}", self.text.text)
+    }
+}
 
 #[derive(Debug,Clone)]
 enum PassageElem {
@@ -390,32 +443,127 @@ impl PassageElem {
         }
     }
 
-    fn render(&self,accumulated_text: &str, current_link: PassageTitle, next_pe: Vec<PassageElem>) -> String {
+    /*
+    fn render(&self,accumulated_text: &str, current_link: PassageTitle, next_stack: Vec<PassageElem>) -> String {
         let mut output = String::new();
 
         match self {
-            PassageElem::Passage(p) => p.render(accumulated_text, current_link, next_pe), 
-            PassageElem::Sequence(v) => render_sequence(v,accumulated_text, current_link, next_pe),
+            PassageElem::Passage(p) => p.render(accumulated_text, current_link, next_stack), 
+            PassageElem::Sequence(v) => render_sequence(v,accumulated_text, current_link, next_stack),
+            PassageElem::Alternative(v) => render_alternative(v,accumulated_text, current_link, next_stack),
             _ => panic!("I don't know how to render {:?}", self)
         }
 
     }
+    */
 }
 
-fn render_sequence(vector: &[PassageElem], accumulated_text: &str, current_link: PassageTitle, mut next_pe: Vec<PassageElem>) -> String {
+/*
+fn render_sequence(vector: &[PassageElem], accumulated_text: &str, current_link: PassageTitle, mut next_stack: Vec<PassageElem>) -> String {
     let mut vector : Vec<PassageElem> = vector.to_vec();
     vector.reverse();
 
-    let first = vector.pop().unwrap();
+    let first_elem = vector.pop().unwrap();
 
-    next_pe.extend(vector);
+    next_stack.extend(vector);
 
-    first.render(accumulated_text, current_link, next_pe)
+    first_elem.render(accumulated_text, current_link, next_stack)
 }
 
+fn render_alternative(vector: &[PassageElem], accumulated_text: &str, current_link: PassageTitle, mut next_stack: Vec<PassageElem>) -> String {
+    let mut output = String::new();
+    current_link.add_level();
+
+    for elem in vector {
+        let sub_link = current_link.clone();
+        output += &elem.render(accumulated_text, current_link, next_stack.clone());
+        current_link.inc();
+    }
+
+    let first_elem = vector.pop().unwrap();
+
+    next_stack.extend(vector);
+
+}
+*/
+
+#[derive(Debug,Clone)]
+struct PassageTree(Passage, Vec<PassageTree>);
+
+
+impl PassageTree {
+    fn new(passage: Passage) -> Self {
+        PassageTree(passage, vec![])
+    }
+
+    fn from(elem: &PassageElem) -> Vec<Self> {
+        match elem {
+            PassageElem::Passage(p) => vec![PassageTree::new(p.clone())],
+            PassageElem::Sequence(v) => {
+                let mut v = v.clone();
+                let first : PassageElem = v.remove(0);
+                let mut output = PassageTree::from(&first);
+
+                for elem in v {
+                    output = output.into_iter().map(|line| concatenate_tree(line, &PassageTree::from(&elem))).collect();
+                }
+                output
+            }
+            PassageElem::Alternative(v) => {
+                let mut output : Vec<PassageTree> = vec![];
+                for elem in v {
+                    output.extend(PassageTree::from(elem));
+                }
+                output
+            }
+            PassageElem::Concurrent(v) => {
+                if v.len()==1 {
+                    return PassageTree::from(&v[0]);
+                }
+
+                let mut output : Vec<PassageTree> = vec![];
+
+                for (it, elem) in v.into_iter().enumerate() {
+                    let mut rest = v.clone();
+                    rest.remove(it);
+                    for sub_elem in PassageTree::from(elem) {
+                        output.push(concatenate_tree(sub_elem, &PassageTree::from(&PassageElem::Concurrent(rest.clone()))));
+                    }
+                }
+                
+                output
+            }
+
+            _ => panic!()
+        }
+    }
+
+
+}
+
+    fn concatenate_tree(a: PassageTree, b: &Vec<PassageTree>) -> PassageTree {
+        if a.1.is_empty() {
+            PassageTree(a.0,b.clone())
+        } else {
+            let subtree : Vec<PassageTree> = a.1.into_iter().map(|line| concatenate_tree(line, b)).collect();
+            PassageTree(a.0,subtree)
+        }
+    }
+impl fmt::Display for PassageTree {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} -> [", self.0)?;
+
+        for line in &self.1 {
+            write!(f,"{},",line)?;
+        }
+
+        write!(f,"]")
+    }
+
+}
 pub struct Exercise {
     title: String,
-    passages: PassageElem
+    passage_tree: PassageTree
 }
 
 impl Exercise {
@@ -428,21 +576,39 @@ impl Exercise {
 
         let title = doc["title"].as_str().unwrap().to_owned();
         let passages = convert_yaml(&doc["passages"], &variables);
+
+        
+        let mut passage_trees = PassageTree::from(&passages.0);
+
+        
         println!("\npassages: {:?}", passages);
+        println!("\npassageTree: {:?}",passage_trees);
+        for it in &passage_trees {
+            println!("\npassageTree: {}",it);
+        }
         
 
-        Ok(Exercise { title, passages: passages.0 })
+        if passage_trees.len() != 1 {
+            bail!("\nThe document in file {:?} doesn't start with an passage (it starts with alternative or concurrent group)", file); 
+        }
+
+        Ok(Exercise { title, passage_tree: passage_trees.pop().unwrap() })
     }
 
     pub fn render(&self) -> String {
+        String::from("Nada por aquí aun")
+    }
+
+/*
+ * pub fn render(&self) -> String {
         let mut output = String::new();
         let passage_title = PassageTitle::new();
 
         output += &preface(&self.title);
         output += &self.passages.render(&String::new(), passage_title, vec![]);
 
-
-/*        let mut output : Vec<String> = Vec::new();
+        /*
+        let mut output : Vec<String> = Vec::new();
 
         output.extend(preface(&self.title));
 
@@ -454,7 +620,7 @@ impl Exercise {
         
         output
     }
-
+*/
 }
 
 fn preface(title: &str) -> String {

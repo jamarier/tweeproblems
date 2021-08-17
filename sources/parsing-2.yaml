@@ -1,0 +1,15 @@
+---
+title: Title
+
+passages:
+  - pass:
+      text: "1"
+  - pass:
+      text: "2"
+  - alt:
+    - pass:
+        text: "3"
+    - pass:
+        text: "4"
+  - pass:
+      text: "5"

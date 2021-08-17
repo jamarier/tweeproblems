@@ -1,0 +1,21 @@
+---
+title: Title
+
+passages:
+  - pass:
+      text: "1"
+  - pass:
+      text: "2"
+  - seq:
+    - pass:
+        text: "3"
+    - pass:
+        text: "4"
+  - pass:
+      text: "5"
+  - - pass: 
+        text: "6"
+    - pass:
+        text: "7"
+  - pass: 
+      text: "8"

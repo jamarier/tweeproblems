@@ -1,0 +1,15 @@
+---
+title: Launch error because it generate multiple trees
+
+passages:
+  - con:
+    - - pass:
+          text: "3"
+      - pass:
+          text: "4"
+    - pass: 
+        text: "5"
+    - pass:
+        text: "6"
+  - pass:
+      text: "7"
