@@ -1,45 +1,116 @@
-## TWP FORMAT
+# Tweeproblems
 
-* First non-empty line is the name of the excersise.
+## Introduction
 
-* The rest is divided into passages. The separator is 
-  ">>>" at the first column of a line. The rest of the line is discarded.
-  It is an separator, it is not needed in the last passage.
+Tweeproblems is a transpiler to convert the description of an exercise (a
+compact yaml file) into a interactive story to process with twine. The result
+is an interactive solve of the problem. Each step shows the context, i.e. what
+the student did before, and what are the possibilites (some of them wrong, and
+some correct) at this step. After each choice, it is possible to give feedback 
+about the choice made.
 
-### Passage Format
-* Text to show before any option
+### Features:
 
-* Each option is marked with "-->" or "--X" at first column of line. The rest of the line
-  is incorporated into the option text.
+Thanks to SugarBox:
 
-* All text of options are shown after the text to show in the passage (except comentaries)
-  
-* "-->" (an arrow) this option is a good one. Must be selected to advance in the excercise.
+* All niceties from twine (SugarBox v2). It has a elegant style, a menu to save
+  and restart the state of the problem...
 
-* "--X" (a ¿crossed? arrow) this option is false. The option doesn't allow to advance.
+* Tweeproblems is build above SugarBox without hide this. So it is possible to use
+  all SugarBox have to offer: images, sound, pluggins, javascript code, ...
 
-* Inside an option, it is possible to write comments to show after the option is selected. 
-  "--" At the begining of line is to mark the start of comments. It's optional.
+Specific from Tweeproblems:
 
-* Empty lines can be used to improve readability.
+* Includes MathJax javascript library. So the math expressions are nicely
+  rendered on screen.
 
-Example of Passage: 
+* Includes an evaluator of math expressions. The writer of exercises says how
+  the values are calculated, but it is the program that actually does the
+  calculations. This evaluator helps the redaction of the exercise because
+  avoid mistyping and rounding issues with raw numbers. (currently only scalar
+  magnitudes)
 
-  """
-  Please, solve 1 + 1
+* The evaluator includes an assisted unit check. It's an unsound unit system,
+  but avoid add magnitudes of different units or passing parameter of wrong
+  units into macros.
 
-  --> 1 + 2 = 3
-  -- it is better if you can do it without use of your fingers
+* Easy to build macros for the evaluator. (currently the macros are hardcoded
+  in source, but add a new macro only require 2 strings: name of macro and
+  operation, see section [Adding Macros](#adding-macros)).
 
-  --X 
-    If we think in binary 1 is 1 and 2 is 10. So, 1 + 2 = 11
-  --
-    To be correct, an marker of binary is nedded in every binary number (i.e. "11b")
-  
-  --X How many do you want to be?
-  --
-    He, he, he. No.
-  """
+* Parallel and concurrent stages: 
+  * It is possible to offer alternative paths (the student choose one or another, but
+    not both),  
+  * Or choose the order of non-dependent tasks (at the end, the student have to
+    choose all task marked as concurrents to continue).
+
+## YAML format
+
+(it is recomended to study examples in source dir)
+
+Some previous definitions:
+
+* Each option (a good one or a bad one) is called "gate". The gate has three
+  elements:
+  * _text_: Text shown at the moment of make a decision.
+  * _follow_: Text shown as context after the decision was made. (The context is
+    the text in _text_ and in _follow_).
+  * _note_: Text shown in a temporal window after the decision was made. It's not
+    added to context and it is useful to explain why is a good or bad choice. 
+
+* It is a set of choices (gates). It shows all posibilities and the student
+  have to choose one.
+
+* There are three compounds:
+  * Sequential: List of passages and compounds. The student have to cope with
+    all elems on the list in the same order they are written.
+
+  * Concurrent: List of passages and compounds. The student have to cope with
+    all elems on the list in any order. The success of concurrent compound is
+    when the student success with each element of it.
+
+  * Alternate: List of passages and compounds. The student have to cope only
+    with one of the elems of the list. The success in compound is the success
+    in one of the alternatives.
+
+### Gate description 
+
+It's an unique string. A series of markers inform if following text is _text_,
+_follow_ or _note_. The markers have to be at the beggining of a row (column 0). 
+
+* "\_\_\_" (three '\_') Following text (in same line too) is _text_.
+* "..." (three '.') Following text (in same line too) is _follow_.
+* "---" (three '-') Following text (in same line too) is _note_.
+
+The gate is interpreted as a FSM. It starts as _text_, and switch with each
+mark. There isn't limit in order or amount or markers.
+
+### Passage description
+
+Hash of hash. Outer have only one key "pass" and inner have three keys:
+
+* _text_: Compulsory. A string. Its the text of the good gate.
+
+* _pre\_bad_: An array/list of strings. Optional. It's a list of wrong gates.
+  They are shown at the same time of good gate (defined in _text_). 
+
+  Other way to define it is mistakes you can take instead the good one (defined
+  in _text_).
+
+* _post\_bad_: An array/list of string. Optional. It's a list of wrong gates.
+  They are shown in the options of the following passage.
+
+  Other way to define it is mistakes you can take after you know the step in
+  this passage.
+
+### Compound description
+
+They are a hash of array. The outer key inform about the compound to use: _seq_
+for Sequential, _alt_ for alternatives and _con_ for concurrent. In each case,
+the array express the posibilities. Array can be from 1 element (without any
+sense) or more. 
+
+
 
 ## MAGNITUDES
 
@@ -114,33 +185,19 @@ Example of Passage:
     e.g.  "value 1 * new_unit :"
 
 
+## Adding Macros
+
+  Las macros no son reentrantes
+  Si pueden llamar a otras macros (con cuidadito)
+
 ## TODO
 
-* Detect Passage without any good answer
+* Tips or hints. Give successive tips to solve current steps
 
 * Internalization
   
   Translations of messages into several languages
 
-* Detector of paragraph formulas
-
-  If a formula is the only text in the line, put in display mode not inline mode
-
-* Parallel Passages: 
-
-  generate two or more independ gates to achieve the same step.
-
-  This requires a great modification of the structure of passages: 
-    - passage is now text and false outs
-    - false outs can be at the beggining (to be injected in previous passage) or at the end (for the next decission).
-    - passages are read into a stack and 
-    - there are some operators to define the relations bewteen passages (again RPN):
-      - consecutive in same order
-      - consecutive but in indiferent order 
-      - Alternatives (or one or other).
-    - In the stitching phase, the start of a passage is inyected as a good answer of the previous one and all the false outs at the beggining
-
-  
 * Auto builder of passages
   rank all gates by dependencies level (this expression is level 3 because its variables are level 2) 
   and split them into passages automatically
@@ -154,6 +211,8 @@ Example of Passage:
   possibilities
   
 * Send information of every step to an server to analyze information
+
+* After the end, give feedback to the user. (you need X steps to finish an exercise of Y steps).  
 
 * Truly unit management
   with suport to product, log, and exponentiation...
