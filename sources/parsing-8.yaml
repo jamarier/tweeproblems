@@ -1,0 +1,12 @@
+---
+title: Testing macro includes
+macros:
+  - macros-1.yaml
+
+passages:
+  - macros: macros-0.yaml
+  - macros: macros-te.yaml
+  - macros:
+    - macros-2.yaml
+  - pass:
+      text: "{{; 1 tres + }}"

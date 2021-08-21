@@ -1,12 +1,10 @@
 // Expressions
 //
 
-//use lazy_static::lazy_static;
-//use regex::Regex;
 use maplit::hashmap;
 use std::collections::HashMap;
 
-use crate::formulas::FORMULAS;
+use crate::macros::Macros;
 use crate::magnitude::Magnitude;
 
 pub type DictVariables = HashMap<String, Expression>;
@@ -23,14 +21,24 @@ pub enum Expression {
 }
 
 impl Expression {
-    pub fn from(string: &str) -> Self {
+    pub fn from(string: &str, macros: &Macros) -> Self {
         let mut stack: Vec<Expression> = vec![];
-        let mut dictionary: DictVariables = hashmap! {};
 
-        Expression::inject(string, &mut stack, &mut dictionary)
+        Expression::inject(string, &mut stack, macros);
+
+        if stack.len() == 1 {
+            stack[0].clone()
+        } else {
+            panic!(
+                "Stack not empty at the end of expression analysis: {:?}",
+                stack
+            )
+        }
     }
 
-    fn inject(string: &str, stack: &mut Vec<Expression>, dictionary: &mut DictVariables) -> Self {
+    fn inject(string: &str, stack: &mut Vec<Expression>, macros: &Macros) {
+        let mut dictionary: DictVariables = hashmap! {};
+
         let string: String = string
             .chars()
             .map(|x| match x {
@@ -59,8 +67,8 @@ impl Expression {
                 }
             } else {
                 match current {
-                    "!" => to_dict(stack, dictionary),
-                    "@" => from_dict(stack, dictionary),
+                    "!" => to_dict(stack, &mut dictionary),
+                    "@" => from_dict(stack, &dictionary),
                     ":" => operator2(units, stack),
                     "::" => operator1(nounits, stack),
                     "+" => operator2(add_expression, stack),
@@ -71,9 +79,9 @@ impl Expression {
                     }
                     "*" => operator2(prod_expression, stack),
                     "/" => operator2(div_expression, stack),
-                    _ => match FORMULAS.get(current) {
+                    _ => match macros.get(current) {
                         Some(f) => {
-                            Expression::inject(f, stack, dictionary);
+                            Expression::inject(f, stack, macros);
                         }
                         None => {
                             stack.push(Expression::Variable(current.to_string()));
@@ -81,12 +89,6 @@ impl Expression {
                     },
                 }
             }
-        }
-
-        if stack.len() == 1 {
-            stack[0].clone()
-        } else {
-            panic!("Wrong Expression parsed: stack {:?}", stack)
         }
     }
 

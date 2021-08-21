@@ -4,11 +4,10 @@ use std::fs::write;
 use std::path::{Path, PathBuf};
 
 mod expression;
-mod formulas;
+mod macros;
 mod magnitude;
 mod passage;
 
-//use crate::expression::DictVariables;
 use crate::passage::Exercise;
 
 fn main() -> Result<()> {
@@ -37,44 +36,6 @@ fn main() -> Result<()> {
     write(output_file, render)?;
 
     Ok(())
-    /*
-    // Open the file in read-only mode (ignoring errors).
-    let mut line_iterator = open_input_file(input_file)?;
-
-    let document_title = locate_title(&mut line_iterator)?;
-    let mut output_lines: Vec<String> = preface(&document_title);
-
-
-
-
-
-    let mut passage_title = PassageTitles::new();
-
-    let mut variables: DictVariables = DictVariables::new();
-
-    let mut previous_text = String::new();
-
-    while let Some(passage) = Passage::read_passage(&mut line_iterator, &mut variables) {
-        previous_text = previous_text + "\n" + &passage.text;
-        let passage = Passage {
-            text: previous_text.clone(),
-            options: passage.options,
-            aftertext: passage.aftertext,
-            aftervariables: passage.aftervariables,
-        };
-
-        output_lines.push(passage.build_subtree(&mut passage_title));
-
-        previous_text = previous_text + "\n" + &passage.aftertext;
-
-        variables.extend(passage.aftervariables.clone());
-        passage_title.inc_chapter();
-    }
-
-    write(output_file, output_lines.join("\n"))?;
-
-    Ok(())
-    */
 }
 
 fn check_input_file(input: &Path) -> Result<&Path> {
