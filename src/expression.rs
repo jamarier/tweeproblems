@@ -2,6 +2,7 @@
 //
 
 use maplit::hashmap;
+use rand::random;
 use std::collections::HashMap;
 
 use crate::macros::Macros;
@@ -18,6 +19,8 @@ pub enum Expression {
     Prod(Vec<Expression>),
     Div(Vec<Expression>),
     Unit(String, Box<Expression>), // Assign Unit if unit = "", verify unit if previus expression have unit
+    Sqrt(Box<Expression>),
+    Rand(Vec<Expression>),
 }
 
 impl Expression {
@@ -50,25 +53,35 @@ impl Expression {
         let items = string.split(' ');
 
         for current in items {
-            if false && !current.is_empty() {
-                println!("stack: {:?}", stack);
-                println!("current: {:?}", current);
-            }
             if current.is_empty() {
             } else if let Some(magnitude) = Magnitude::get(current) {
-                if magnitude.value >= 0.0 {
-                    stack.push(Expression::Magnitude(magnitude));
-                } else {
-                    let mag_abs = Magnitude {
-                        value: magnitude.value.abs(),
-                        unit: magnitude.unit,
-                    };
-                    stack.push(Expression::Neg(Box::new(Expression::Magnitude(mag_abs))));
-                }
+                insert_magnitude(magnitude, stack);
             } else {
                 match current {
+                    // stack operators
+                    "debug" => {
+                        println!("*****\nDEBUG");
+                        println!(" String: {:?}", string);
+                        println!(" {:?}", stack);
+                        println!("END DEBUG\n*****\n");
+                    }
+                    "." => {
+                        println!("*****\nTRACE");
+                        println!(" String: {:?}", string);
+                        println!(" Point {:?}", pop(stack).show());
+                        println!("END TRACE\n*****\n");
+                    }
+                    "drop" => drop(stack),
+                    "dup" => dup(stack),
+                    "over" => over(stack),
+                    "swap" => swap(stack),
+                    "nip" => nip(stack),
+
+                    // register operators
                     "!" => to_dict(stack, &mut dictionary),
                     "@" => from_dict(stack, &dictionary),
+
+                    // arithmetic operators
                     ":" => operator2(units, stack),
                     "::" => operator1(nounits, stack),
                     "+" => operator2(add_expression, stack),
@@ -79,6 +92,10 @@ impl Expression {
                     }
                     "*" => operator2(prod_expression, stack),
                     "/" => operator2(div_expression, stack),
+                    "sqrt" => operator1(sqrt_expression, stack),
+                    "rand" => operator2(rand_expression, stack),
+
+                    // macros and variables
                     _ => match macros.get(current) {
                         Some(f) => {
                             Expression::inject(f, stack, macros);
@@ -124,6 +141,10 @@ impl Expression {
                 format!(" \\frac{{{}}}{{{}}} ", items[0].show(), items[1].show())
             }
             Expression::Unit(_name, value) => value.show(),
+            Expression::Sqrt(expr) => format!("\\sqrt{{{}}}", expr.show()),
+            Expression::Rand(items) => {
+                format!("rand({}, {})", items[0].show(), items[1].show())
+            }
         }
     }
 
@@ -142,17 +163,13 @@ impl Expression {
 
                 for op in operands {
                     let mag = op.value(dict);
-                    if !(result.unit == "¿?" || mag.unit == "¿?" || result.unit == mag.unit) {
-                        panic!("Wrong units adding {:?}.\n  Current result: {:?},\n  next operand:   {:?}\n",operands, result, mag);
-                    }
-
-                    let value = result.value + mag.value;
-                    let unit = if result.unit == "¿?" {
-                        mag.unit
+                    let unit = if let Some(s) = compatible_unit(&result, &mag) {
+                        s
                     } else {
-                        result.unit
+                        panic!("Wrong units adding {:?}.\n  Current result: {:?},\n  next operand:   {:?}\n",operands, result, mag);
                     };
-                    result = Magnitude::new(value, unit)
+
+                    result = Magnitude::new(result.value + mag.value, unit)
                 }
 
                 result
@@ -178,13 +195,36 @@ impl Expression {
 
                 Magnitude::new(num.value / den.value, String::from("¿?"))
             }
-            Expression::Unit(unit, expr) => {
+            Expression::Unit(new_unit, expr) => {
                 let mut mag = expr.value(dict);
-                if &mag.unit != "¿?" && &mag.unit != unit {
-                    panic!("Expression {:?} hasn't unit {}", expr, unit);
-                }
-                mag.unit = unit.to_owned();
+                mag.unit = if let Some(s) = compatible_unit(
+                    &mag,
+                    &Magnitude {
+                        value: 0.0,
+                        unit: new_unit.clone(),
+                    },
+                ) {
+                    s
+                } else {
+                    panic!("Expression {:?} hasn't unit {}", expr, new_unit);
+                };
+
                 mag
+            }
+            Expression::Sqrt(expr) => {
+                let mag = expr.value(dict);
+                Magnitude::new(mag.value.sqrt(), String::from("¿?"))
+            }
+            Expression::Rand(items) => {
+                let min = items[0].value(dict).value;
+                let max = items[1].value(dict).value;
+                let unit = compatible_unit(&items[0].value(dict), &items[1].value(dict))
+                    .expect("Randon value with limits with different units");
+
+                Magnitude {
+                    value: (max - min) * random::<f64>() + min,
+                    unit,
+                }
             }
         }
     }
@@ -196,10 +236,14 @@ impl Expression {
 //Operations over stack
 
 fn pop(stack: &mut Vec<Expression>) -> Expression {
+    /*
     match stack.pop() {
         Some(v) => v,
         None => panic!("Empty stack"),
     }
+    */
+
+    stack.pop().expect("Empty stack")
 }
 
 fn operator1(f: fn(Expression) -> Expression, stack: &mut Vec<Expression>) {
@@ -213,6 +257,53 @@ fn operator2(f: fn(Expression, Expression) -> Expression, stack: &mut Vec<Expres
     let op1 = pop(stack);
 
     stack.push(f(op1, op2));
+}
+
+fn drop(stack: &mut Vec<Expression>) {
+    stack.pop();
+}
+
+fn dup(stack: &mut Vec<Expression>) {
+    let n1 = pop(stack);
+
+    stack.push(n1.clone());
+    stack.push(n1);
+}
+
+fn over(stack: &mut Vec<Expression>) {
+    let n2 = pop(stack);
+    let n1 = pop(stack);
+
+    stack.push(n1.clone());
+    stack.push(n2);
+    stack.push(n1);
+}
+
+fn swap(stack: &mut Vec<Expression>) {
+    let n2 = pop(stack);
+    let n1 = pop(stack);
+
+    stack.push(n2);
+    stack.push(n1);
+}
+
+fn nip(stack: &mut Vec<Expression>) {
+    let n2 = pop(stack);
+    let _n1 = pop(stack);
+
+    stack.push(n2);
+}
+
+fn insert_magnitude(magnitude: Magnitude, stack: &mut Vec<Expression>) {
+    if magnitude.value >= 0.0 {
+        stack.push(Expression::Magnitude(magnitude));
+    } else {
+        let mag_abs = Magnitude {
+            value: magnitude.value.abs(),
+            unit: magnitude.unit,
+        };
+        stack.push(Expression::Neg(Box::new(Expression::Magnitude(mag_abs))));
+    }
 }
 
 //------------------------------------------------
@@ -251,7 +342,22 @@ fn from_dict(stack: &mut Vec<Expression>, dict: &DictVariables) {
 }
 
 //------------------------------------------------
-//Operations over expressions
+// Operations with units
+
+fn compatible_unit(a: &Magnitude, b: &Magnitude) -> Option<String> {
+    if a.unit == "¿?" {
+        return Some(b.unit.clone());
+    } else if b.unit == "¿?" {
+        return Some(a.unit.clone());
+    } else if a.unit == b.unit {
+        return Some(a.unit.clone());
+    } else {
+        return None;
+    }
+}
+
+//------------------------------------------------
+// Easy operations over expressions
 
 fn units(value: Expression, unit: Expression) -> Expression {
     let unit = match unit {
@@ -265,6 +371,17 @@ fn units(value: Expression, unit: Expression) -> Expression {
 fn nounits(value: Expression) -> Expression {
     Expression::Unit(String::new(), Box::new(value))
 }
+
+fn sqrt_expression(value: Expression) -> Expression {
+    Expression::Sqrt(Box::new(value))
+}
+
+fn rand_expression(op1: Expression, op2: Expression) -> Expression {
+    Expression::Rand(vec![op1, op2])
+}
+
+//------------------------------------------------
+// Complex operations over expressions
 
 fn add_expression(op1: Expression, op2: Expression) -> Expression {
     // factors extraction

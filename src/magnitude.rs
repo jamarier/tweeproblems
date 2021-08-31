@@ -114,7 +114,7 @@ impl fmt::Display for Magnitude {
         let sign_str: &str;
         let value_abs: ValueType;
 
-        if self.value > 0.0 {
+        if self.value >= 0.0 {
             sign_str = "";
             value_abs = self.value;
         } else {

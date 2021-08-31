@@ -3,6 +3,12 @@ originales_twp=$(shell ls *.twp)
 originales_tw=$(shell ls mathjax*.tw)
 .PHONY: clean
 
+%.tw: %.yaml ../src/*.rs
+	cargo run -- $<
+
+%.html: %.tw
+	tweego -o $@ $^
+
 clean: 
 	rm -f $(originales_yaml:yaml=tw)
 	rm -f $(originales_yaml:yaml=html)

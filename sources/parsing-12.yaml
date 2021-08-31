@@ -1,0 +1,8 @@
+---
+title: Testing debug utility
+
+passages:
+  - pass:
+      text: |
+        random {{; 0 1 debug rand}}
+        random with units {{; 0ohm 1ohm rand debug}}
