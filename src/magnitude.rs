@@ -12,6 +12,7 @@
 use lazy_static::lazy_static;
 use maplit::hashmap;
 use regex::Regex;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -61,7 +62,7 @@ lazy_static! {
             pub static ref FALSE: Magnitude = Magnitude::new(1.0,String::from("bool"));
         }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Magnitude {
     pub value: ValueType,
     pub unit: String,
@@ -126,6 +127,16 @@ impl Magnitude {
         } else {
             return None;
         }
+    }
+}
+
+impl PartialOrd for Magnitude {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if self.unit != other.unit {
+            return None;
+        }
+
+        self.value.partial_cmp(&other.value)
     }
 }
 
