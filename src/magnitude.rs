@@ -101,6 +101,32 @@ impl Magnitude {
 
         Magnitude { value, unit }
     }
+
+    /// Determines if self and b have compatible unit (same unit or unit and unknown)
+    /// return the Some(unit) or None
+    pub fn compatible_unit(&self, b: &Self) -> Option<String> {
+        if self.unit == "¿?" {
+            return Some(b.unit.clone());
+        } else if b.unit == "¿?" {
+            return Some(self.unit.clone());
+        } else if self.unit == b.unit {
+            return Some(self.unit.clone());
+        } else {
+            return None;
+        }
+    }
+
+    pub fn compatible_unit_str(&self, unit: &str) -> Option<String> {
+        if self.unit == "¿?" {
+            return Some(unit.to_string());
+        } else if unit == "¿?" {
+            return Some(self.unit.clone());
+        } else if self.unit == unit {
+            return Some(unit.to_string());
+        } else {
+            return None;
+        }
+    }
 }
 
 impl fmt::Display for Magnitude {

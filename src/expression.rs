@@ -201,7 +201,7 @@ impl Expression {
             Expression::Add(operands) => value_n_ary(
                 Magnitude::new(0.0, String::from("¿?")),
                 |a, b| {
-                    let unit = compatible_unit(&a, &b).expect(&format!(
+                    let unit = a.compatible_unit(&b).expect(&format!(
                         "Wrong units adding. Current_result: {:?}, next operand: {:?}\n",
                         a, b
                     ));
@@ -233,17 +233,9 @@ impl Expression {
             }
             Expression::Unit(expr, new_unit) => {
                 let mut mag = expr.value(dict);
-                mag.unit = if let Some(s) = compatible_unit(
-                    &mag,
-                    &Magnitude {
-                        value: 0.0,
-                        unit: new_unit.clone(),
-                    },
-                ) {
-                    s
-                } else {
-                    panic!("Expression {:?} hasn't unit {}", expr, new_unit);
-                };
+                mag.unit = mag
+                    .compatible_unit_str(&new_unit)
+                    .expect(&format!("Expression {:?} hasn't unit {}", expr, new_unit));
 
                 mag
             }
@@ -254,7 +246,9 @@ impl Expression {
             Expression::Rand(items) => {
                 let min = items[0].value(dict).value;
                 let max = items[1].value(dict).value;
-                let unit = compatible_unit(&items[0].value(dict), &items[1].value(dict))
+                let unit = items[0]
+                    .value(dict)
+                    .compatible_unit(&items[1].value(dict))
                     .expect("Randon value with limits with different units");
 
                 Magnitude {
@@ -265,9 +259,11 @@ impl Expression {
             Expression::And(operands) => value_n_ary(
                 magnitude::TRUE.clone(),
                 |a, b| {
-                    let unit = compatible_unit(&a, &b).expect("And operation without booleans");
-                    let value = if a.value != 0.0 { b.value } else { a.value };
-                    Magnitude { unit, value }
+                    if a == *magnitude::TRUE {
+                        b.clone()
+                    } else {
+                        a.clone()
+                    }
                 },
                 operands,
                 dict,
@@ -275,18 +271,17 @@ impl Expression {
             Expression::Or(operands) => value_n_ary(
                 magnitude::FALSE.clone(),
                 |a, b| {
-                    let unit = compatible_unit(&a, &b).expect("Or operation without booleans");
-                    let value = if a.value == 0.0 { b.value } else { a.value };
-                    Magnitude { unit, value }
+                    if a != *magnitude::TRUE {
+                        b.clone()
+                    } else {
+                        a.clone()
+                    }
                 },
                 operands,
                 dict,
             ),
             Expression::Not(expr) => {
                 let value = expr.value(dict);
-                if value.unit != "bool" {
-                    panic!("boolean operation without boolean values: {:?}", value);
-                }
 
                 if value == *magnitude::TRUE {
                     magnitude::FALSE.clone()
@@ -342,7 +337,7 @@ fn relation_n_ary(
     let mut previous = previous.value(dict);
     for it in iterator {
         let it = it.value(dict);
-        compatible_unit(&previous, &it).expect(&format!(
+        it.compatible_unit(&previous).expect(&format!(
             "Wrong Units trying to compare {:?} and {:?}",
             previous, it
         ));
@@ -424,18 +419,6 @@ fn from_dict(stack: &mut Stack, dict: &DictVariables) {
 
 //------------------------------------------------
 // Operations with units
-
-fn compatible_unit(a: &Magnitude, b: &Magnitude) -> Option<String> {
-    if a.unit == "¿?" {
-        return Some(b.unit.clone());
-    } else if b.unit == "¿?" {
-        return Some(a.unit.clone());
-    } else if a.unit == b.unit {
-        return Some(a.unit.clone());
-    } else {
-        return None;
-    }
-}
 
 //------------------------------------------------
 // Easy operations over expressions
