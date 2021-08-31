@@ -6,3 +6,7 @@ passages:
       text: |
         {{; 1 2 debug swap debug over debug over debug nip debug drop debug dup debug drop debug drop debug 3 +}}
         {{; 1 2 1 . debug swap debug over debug over 2 . debug nip debug drop pepe . debug dup debug drop debug drop debug 3 +}}
+  - macros: macros-stack.yaml
+  - pass:
+      text: |
+        {{; 1 2 3 n ! 1 . debug drop2 2 . debug n @ 3 . debug +}}

@@ -1,0 +1,10 @@
+---
+title: Testing n_ary operations 
+
+passages:
+  - pass:
+      text: |
+        {{; 1 2 3 + + }}
+        {{; 1ohm 2ohm 3ohm + + }}
+        {{; 1 2 3 * * }}
+        {{; 1ohm 1A 3ohm * * }}
