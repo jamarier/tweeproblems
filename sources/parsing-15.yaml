@@ -25,3 +25,9 @@ passages:
         {{; 1bool not not not}}
         {{; 1bool 0bool or not}}
 
+        {{; 1ohm 2ohm == }}
+        {{; 1ohm 1ohm 1ohm == == }}
+
+        {{; 1ohm 2ohm != }}
+
+        {{; 1ohm 2ohm == 1bool + }}

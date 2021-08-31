@@ -56,9 +56,12 @@ lazy_static! {
                 "ohm" => "\\Omega",
             };
 
+// Booleans constants
+            pub static ref TRUE: Magnitude = Magnitude::new(1.0,String::from("bool"));
+            pub static ref FALSE: Magnitude = Magnitude::new(1.0,String::from("bool"));
         }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Magnitude {
     pub value: ValueType,
     pub unit: String,
