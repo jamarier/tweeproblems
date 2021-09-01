@@ -107,25 +107,23 @@ impl Magnitude {
     /// return the Some(unit) or None
     pub fn compatible_unit(&self, b: &Self) -> Option<String> {
         if self.unit == "¿?" {
-            return Some(b.unit.clone());
-        } else if b.unit == "¿?" {
-            return Some(self.unit.clone());
-        } else if self.unit == b.unit {
-            return Some(self.unit.clone());
+            Some(b.unit.clone())
+        } else if b.unit == "¿?" || self.unit == b.unit {
+            Some(self.unit.clone())
         } else {
-            return None;
+            None
         }
     }
 
     pub fn compatible_unit_str(&self, unit: &str) -> Option<String> {
         if self.unit == "¿?" {
-            return Some(unit.to_string());
+            Some(unit.to_string())
         } else if unit == "¿?" {
-            return Some(self.unit.clone());
+            Some(self.unit.clone())
         } else if self.unit == unit {
-            return Some(unit.to_string());
+            Some(unit.to_string())
         } else {
-            return None;
+            None
         }
     }
 }

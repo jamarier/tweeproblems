@@ -1,0 +1,38 @@
+---
+title: Testing conditional passages
+
+passages:
+  - pass:
+      text: |
+        Be {{, R = 4.5ohm}}
+
+  - pass:
+      text: |
+        {{;R}}
+  - con:
+      - cond: "{{! R  5ohm  < }}"
+        cont:
+          - pass:
+              text: |
+                {{,R}} is lower than {{,5ohm}}
+          - pass:
+              text: |
+                So {{,R}} is lower than {{,15ohm}}
+      - cond: "{{! R 5ohm >}}"
+        cont:
+          - con:
+              - pass:
+                  text: |
+                    {{,R}} is greater than {{,5ohm}}
+              - pass:
+                  text: |
+                    So {{,R}} is greater than {{,4.9ohm}}
+      - cond: "{{! R 4ohm >}}"
+        cont:
+          - pass:
+              text: |
+                {{,R}} is greater than {{,4ohm}}
+          - pass:
+              text: |
+                So {{,R}} is greater than {{,1ohm}}
+

@@ -234,7 +234,7 @@ impl Expression {
             Expression::Unit(expr, new_unit) => {
                 let mut mag = expr.value(dict);
                 mag.unit = mag
-                    .compatible_unit_str(&new_unit)
+                    .compatible_unit_str(new_unit)
                     .expect(&format!("Expression {:?} hasn't unit {}", expr, new_unit));
 
                 mag
@@ -260,9 +260,9 @@ impl Expression {
                 magnitude::TRUE.clone(),
                 |a, b| {
                     if a == *magnitude::TRUE {
-                        b.clone()
+                        b
                     } else {
-                        a.clone()
+                        a
                     }
                 },
                 operands,
@@ -272,9 +272,9 @@ impl Expression {
                 magnitude::FALSE.clone(),
                 |a, b| {
                     if a != *magnitude::TRUE {
-                        b.clone()
+                        b
                     } else {
-                        a.clone()
+                        a
                     }
                 },
                 operands,

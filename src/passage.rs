@@ -26,6 +26,15 @@ pub struct Gate {
 }
 
 impl Gate {
+    fn new() -> Self {
+        Gate {
+            text: String::new(),
+            follow: String::new(),
+            note: String::new(),
+            variables: DictVariables::new(),
+        }
+    }
+
     fn from(string: &str, variables: &DictVariables, macros: &Macros) -> Self {
         let mut text = Vec::<String>::new();
         let mut follow = Vec::<String>::new();
@@ -59,9 +68,9 @@ impl Gate {
             }
 
             match status {
-                GateStatus::Text => text.push(process_line(&line, &mut variables, &macros)),
-                GateStatus::Follow => follow.push(process_line(&line, &mut variables, &macros)),
-                GateStatus::Note => note.push(process_line(&line, &mut variables, &macros)),
+                GateStatus::Text => text.push(process_line(line, &mut variables, macros)),
+                GateStatus::Follow => follow.push(process_line(line, &mut variables, macros)),
+                GateStatus::Note => note.push(process_line(line, &mut variables, macros)),
             }
         }
 
@@ -105,6 +114,10 @@ impl Gate {
     fn has_note(&self) -> bool {
         !self.note.is_empty()
     }
+
+    fn is_empty(&self) -> bool {
+        self.text.is_empty()
+    }
 }
 
 enum GateStatus {
@@ -117,7 +130,7 @@ enum GateStatus {
 fn process_line(line: &str, vars: &mut DictVariables, macros: &Macros) -> String {
     let mut output_vec = Vec::<String>::new();
 
-    let line = encode_line(&line);
+    let line = encode_line(line);
 
     lazy_static! {
         static ref RE_INTERPOLATION: Regex = Regex::new(
@@ -181,7 +194,7 @@ fn process_line(line: &str, vars: &mut DictVariables, macros: &Macros) -> String
                 if !var_name.is_empty() {
                     output_vec.push(format!("{} = ", var_name));
                 }
-                output_vec.push(format!("{}", value.value(&vars)));
+                output_vec.push(format!("{}", value.value(vars)));
                 output_vec.push(end_math.to_string());
             }
             "," => {
@@ -201,7 +214,7 @@ fn process_line(line: &str, vars: &mut DictVariables, macros: &Macros) -> String
                 }
                 output_vec.push(value.show());
                 output_vec.push(String::from(" = "));
-                output_vec.push(format!("{}", value.value(&vars)));
+                output_vec.push(format!("{}", value.value(vars)));
                 output_vec.push(end_math.to_string());
             }
             "!" => {
@@ -209,7 +222,7 @@ fn process_line(line: &str, vars: &mut DictVariables, macros: &Macros) -> String
                 if !var_name.is_empty() {
                     output_vec.push(format!("{}=", var_name));
                 }
-                output_vec.push(format!("{}", value.value(&vars).value));
+                output_vec.push(format!("{}", value.value(vars).value));
             }
             "_" => {} // Make calculation but doesn't show anything
             _ => {
@@ -286,7 +299,11 @@ pub struct Passage {
     post_bad: Vec<Gate>,
 }
 
-impl Passage {}
+impl Passage {
+    fn is_empty(&self)-> bool {
+        self.text.is_empty()
+    }
+}
 
 impl fmt::Display for Passage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -303,57 +320,27 @@ enum PassageElem {
 }
 
 impl PassageElem {
-    /*
-    fn previous_bad(&self) -> Vec<Gate> {
-        match self {
-            PassageElem::Passage(p) => p.previous_bad.clone(),
-            PassageElem::Sequence(v) => v.first().unwrap().previous_bad(),
-            PassageElem::Concurrent(v) => {
-                let mut output = vec![];
-                for e in v {
-                    output.extend(e.previous_bad());
-                }
-                output
-            }
-            PassageElem::Alternative(v) => {
-                let mut output = vec![];
-                for e in v {
-                    output.extend(e.previous_bad());
-                }
-                output
-            }
-        }
-    }
-
-    fn gate_text(&self) -> Vec<Gate> {
+    /// extract text text from Gates in PassageElem
+    fn text(&self) -> Vec<Gate> {
         match self {
             PassageElem::Passage(p) => vec![p.text.clone()],
-            PassageElem::Sequence(v) => v.first().unwrap().gate_text(),
-            PassageElem::Concurrent(v) => {
+            PassageElem::Sequence(s) => s[0].text(),
+            PassageElem::Concurrent(s) => {
                 let mut output = vec![];
-                for e in v {
-                    output.extend(e.gate_text());
+                for p in s {
+                    output.extend(p.text());
                 }
                 output
             }
-            PassageElem::Alternative(v) => {
+            PassageElem::Alternative(s) => {
                 let mut output = vec![];
-                for e in v {
-                    output.extend(e.gate_text());
+                for p in s {
+                    output.extend(p.text());
                 }
                 output
             }
         }
     }
-
-    fn post_bad(&self) -> Vec<Gate> {
-        match self {
-            PassageElem::Passage(p) => p.post_bad.clone(),
-            PassageElem::Sequence(v) => v.last().unwrap().post_bad(),
-            _ => vec![],
-        }
-    }
-    */
 }
 
 #[derive(Debug, Clone)]
@@ -410,6 +397,14 @@ impl PassageTree {
         }
     }
 
+    fn is_endnode(&self) -> bool {
+        for node in &self.1 {
+            if !node.0.is_empty() { return false; }
+        }
+
+        true
+    }
+
     fn render(&self, acumulated_text: &str, current_link: &PassageTitle) -> String {
         let mut output = format!(":: {}\n\n", current_link);
         let mut suboutput = String::new();
@@ -421,7 +416,7 @@ impl PassageTree {
         output += &accumulated_text;
 
         // end of render
-        if self.1.is_empty() {
+        if self.is_endnode() {
             output += "\n[[ Este es el final del problema. Volver al inicio -> Start ]]\n\n";
             return output;
         }
@@ -443,7 +438,7 @@ impl PassageTree {
             output_gates.push(bad_gate.passage_choice(&sub_link));
             // TODO I18N
             suboutput +=
-                &bad_gate.passage_bad_note(&sub_link, "Volver a intentarlo", &current_link);
+                &bad_gate.passage_bad_note(&sub_link, "Volver a intentarlo", current_link);
 
             sub_link.inc();
         }
@@ -451,6 +446,9 @@ impl PassageTree {
         // good_gates
         for next in &self.1 {
             let gate = next.0.text.clone();
+            if gate.is_empty() {
+                continue;
+            }
             output_gates.push(gate.passage_choice(&sub_link));
             if gate.has_note() {
                 let temp_link = sub_link.clone();
@@ -517,7 +515,7 @@ impl Exercise {
 
         let variables = DictVariables::new();
 
-        let macros = if let Some(macros_files) = is_macro(&doc) {
+        let macros = if let Some(macros_files) = is_macro(doc) {
             include_macros(Macros::new(), &macros_files)
         } else {
             Macros::new()
@@ -588,12 +586,16 @@ importScripts([
     output
 }
 
-fn unique_key(hash: &Hash) -> Option<&str> {
-    if hash.len() != 1 {
-        return None;
+fn main_key(hash: &Hash) -> Option<&str> {
+    if hash.len() == 1 {
+        return Some(hash.front().unwrap().0.as_str().unwrap());
     }
 
-    return Some(hash.front().unwrap().0.as_str().unwrap());
+    if hash.contains_key(&Yaml::from_str("cond")) {
+        return Some("cond");
+    }
+
+    None
 }
 
 fn is_macro(elem: &Yaml) -> Option<Vec<PathBuf>> {
@@ -623,11 +625,12 @@ fn convert_yaml(
 ) -> (PassageElem, DictVariables, Macros) {
     match yaml {
         Yaml::Array(_) => convert_seq(yaml.as_vec().unwrap(), dictionary, macros),
-        Yaml::Hash(hash) => match unique_key(hash) {
+        Yaml::Hash(hash) => match main_key(hash) {
             Some("pass") => convert_pass(&yaml["pass"], dictionary, macros),
             Some("seq") => convert_seq(yaml["seq"].as_vec().unwrap(), dictionary, macros),
             Some("alt") => convert_alt(yaml["alt"].as_vec().unwrap(), dictionary, macros),
             Some("con") => convert_con(yaml["con"].as_vec().unwrap(), dictionary, macros),
+            Some("cond") => convert_cond(&yaml["cond"], &yaml["cont"], dictionary, macros),
             Some("macros") => panic!("'macros' directive misplaced"),
             _ => panic!("I don't know how to process {:?}", hash),
         },
@@ -682,7 +685,7 @@ fn convert_seq(
     let mut passages = Vec::<PassageElem>::new();
 
     for elem in elems {
-        if let Some(macros_files) = is_macro(&elem) {
+        if let Some(macros_files) = is_macro(elem) {
             mac = include_macros(mac, &macros_files);
         } else {
             let (passelem, ndict, nmac) = convert_yaml(elem, &dict, &mac);
@@ -733,6 +736,30 @@ fn convert_alt(
     (PassageElem::Alternative(passages), dict, mac)
 }
 
+fn convert_cond(
+    cond: &Yaml,
+    cont: &Yaml,
+    dictionary: &DictVariables,
+    macros: &Macros,
+) -> (PassageElem, DictVariables, Macros) {
+    let cond = Gate::from(cond.as_str().unwrap(), dictionary, macros);
+
+    if cond.text == "1" {
+        convert_yaml(cont, dictionary, macros)
+    } else {
+        let (passage_elem, _, _) = convert_yaml(cont, dictionary, macros);
+        let text = passage_elem.text();
+        (
+            PassageElem::Passage(Passage {
+                previous_bad: text,
+                text: Gate::new(),
+                post_bad: vec![],
+            }),
+            dictionary.clone(),
+            macros.clone(),
+        )
+    }
+}
 //-------------------------
 
 #[derive(Debug, Clone)]
