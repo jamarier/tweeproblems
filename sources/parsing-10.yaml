@@ -1,0 +1,7 @@
+---
+title: Testing sqrt operator
+
+passages:
+  - pass:
+      text: |
+        sqrt of {{; 25 sqrt}} {{; 2 sqrt}} {{; -1 sqrt}}

@@ -1,0 +1,8 @@
+---
+title: Testing random function
+
+passages:
+  - pass:
+      text: |
+        random {{; 0 1 rand}}
+        random with units {{; 0ohm 1ohm rand}}

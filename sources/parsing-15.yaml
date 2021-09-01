@@ -1,0 +1,33 @@
+---
+title: Testing booleans
+
+passages:
+  - pass:
+      text: |
+        {{; 1bool 1bool and}}
+        {{; 1bool 0bool and}}
+        {{; 0bool 1bool and}}
+        {{; 0bool 0bool and}}
+        {{; 1bool 1bool 1bool and and }}
+        {{; 1bool 1bool 0bool and and }}
+        {{; 0bool 0bool 0bool and and }}
+
+        {{; 1bool 1bool or}}
+        {{; 1bool 0bool or}}
+        {{; 0bool 1bool or}}
+        {{; 0bool 0bool or}}
+        {{; 1bool 1bool 1bool or or }}
+        {{; 1bool 1bool 0bool or or }}
+        {{; 0bool 0bool 0bool or or }}
+
+        {{; 1bool not}}
+        {{; 1bool not not}}
+        {{; 1bool not not not}}
+        {{; 1bool 0bool or not}}
+
+        {{; 1ohm 2ohm == }}
+        {{; 1ohm 1ohm 1ohm == == }}
+
+        {{; 1ohm 2ohm != }}
+
+        {{; 1ohm 2ohm == 1bool + }}

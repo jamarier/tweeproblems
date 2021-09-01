@@ -1,36 +1,60 @@
 // Expressions
 //
 
-//use lazy_static::lazy_static;
-//use regex::Regex;
 use maplit::hashmap;
+use rand::random;
 use std::collections::HashMap;
 
-use crate::formulas::FORMULAS;
-use crate::magnitude::Magnitude;
+use crate::macros::Macros;
+use crate::magnitude::{self, Magnitude};
 
 pub type DictVariables = HashMap<String, Expression>;
+pub type Stack = Vec<Expression>;
+pub type Argument = Box<Expression>;
+pub type Arguments = Vec<Expression>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     Magnitude(Magnitude),
     Variable(String),
-    Add(Vec<Expression>),
-    Neg(Box<Expression>),
-    Prod(Vec<Expression>),
-    Div(Vec<Expression>),
-    Unit(String, Box<Expression>), // Assign Unit if unit = "", verify unit if previus expression have unit
+    Add(Arguments),
+    Neg(Argument),
+    Prod(Arguments),
+    Div(Arguments),
+    Unit(Argument, String), // Assign Unit if unit = "¿?", verify unit if previus expression have unit
+    Sqrt(Argument),
+    Rand(Arguments),
+
+    And(Arguments),
+    Or(Arguments),
+    Not(Argument),
+    Eq(Arguments),
+    Neq(Arguments),
+    Le(Arguments),
+    Leq(Arguments),
+    Ge(Arguments),
+    Geq(Arguments),
 }
 
 impl Expression {
-    pub fn from(string: &str) -> Self {
-        let mut stack: Vec<Expression> = vec![];
-        let mut dictionary: DictVariables = hashmap! {};
+    pub fn from(string: &str, macros: &Macros) -> Self {
+        let mut stack: Stack = vec![];
 
-        Expression::inject(string, &mut stack, &mut dictionary)
+        Expression::inject(string, &mut stack, macros);
+
+        if stack.len() == 1 {
+            stack[0].clone()
+        } else {
+            panic!(
+                "Stack not empty at the end of expression analysis: {:?}",
+                stack
+            )
+        }
     }
 
-    fn inject(string: &str, stack: &mut Vec<Expression>, dictionary: &mut DictVariables) -> Self {
+    fn inject(string: &str, stack: &mut Stack, macros: &Macros) {
+        let mut dictionary: DictVariables = hashmap! {};
+
         let string: String = string
             .chars()
             .map(|x| match x {
@@ -42,27 +66,35 @@ impl Expression {
         let items = string.split(' ');
 
         for current in items {
-            if false && !current.is_empty() {
-                println!("stack: {:?}", stack);
-                println!("current: {:?}", current);
-            }
             if current.is_empty() {
             } else if let Some(magnitude) = Magnitude::get(current) {
-                if magnitude.value >= 0.0 {
-                    stack.push(Expression::Magnitude(magnitude));
-                } else {
-                    let mag_abs = Magnitude {
-                        value: magnitude.value.abs(),
-                        unit: magnitude.unit,
-                    };
-                    stack.push(Expression::Neg(Box::new(Expression::Magnitude(mag_abs))));
-                }
+                insert_magnitude(magnitude, stack);
             } else {
                 match current {
-                    "!" => to_dict(stack, dictionary),
-                    "@" => from_dict(stack, dictionary),
+                    // stack operators
+                    "debug" => {
+                        println!("*****\nDEBUG");
+                        println!(" String: {:?}", string);
+                        println!(" {:?}", stack);
+                        println!(" {:?}", dictionary);
+                        println!("END DEBUG\n*****\n");
+                    }
+                    "." => {
+                        println!("*****\nTRACE");
+                        println!(" String: {:?}", string);
+                        println!(" Point {:?}", pop(stack).show());
+                        println!("END TRACE\n*****\n");
+                    }
+
+                    // register operators
+                    "!" => to_dict(stack, &mut dictionary),
+                    "@" => from_dict(stack, &dictionary),
+
+                    // units operators
                     ":" => operator2(units, stack),
                     "::" => operator1(nounits, stack),
+
+                    // arithmetic operators
                     "+" => operator2(add_expression, stack),
                     "neg" => operator1(neg_expression, stack),
                     "-" => {
@@ -71,9 +103,24 @@ impl Expression {
                     }
                     "*" => operator2(prod_expression, stack),
                     "/" => operator2(div_expression, stack),
-                    _ => match FORMULAS.get(current) {
+                    "sqrt" => operator1(sqrt_expression, stack),
+                    "rand" => operator2(rand_expression, stack),
+
+                    // logical and relational operators
+                    "and" => operator2(and_expression, stack),
+                    "or" => operator2(or_expression, stack),
+                    "not" => operator1(not_expression, stack),
+                    "==" => operator2(eq_expression, stack),
+                    "!=" => operator2(neq_expression, stack),
+                    "<" => operator2(le_expression, stack),
+                    "<=" => operator2(leq_expression, stack),
+                    ">" => operator2(ge_expression, stack),
+                    ">=" => operator2(geq_expression, stack),
+
+                    // macros and variables
+                    _ => match macros.get(current) {
                         Some(f) => {
-                            Expression::inject(f, stack, dictionary);
+                            Expression::inject(f, stack, macros);
                         }
                         None => {
                             stack.push(Expression::Variable(current.to_string()));
@@ -82,11 +129,17 @@ impl Expression {
                 }
             }
         }
+    }
 
-        if stack.len() == 1 {
-            stack[0].clone()
-        } else {
-            panic!("Wrong Expression parsed: stack {:?}", stack)
+    fn show_group(&self) -> String {
+        match self {
+            Expression::Magnitude(..) => self.show(),
+            Expression::Variable(..) => self.show(),
+            Expression::Unit(..) => self.show(),
+            Expression::Sqrt(..) => self.show(),
+            Expression::Rand(..) => self.show(),
+            Expression::Not(..) => self.show(),
+            _ => format!("( {} )", self.show()),
         }
     }
 
@@ -98,30 +151,40 @@ impl Expression {
                 let mut output = String::new();
                 let mut iterator = items.iter();
                 let first = iterator.next().unwrap();
-                output.push_str(&first.show());
+                output.push_str(&first.show_group());
                 for item in iterator {
                     if let Expression::Neg(_) = item {
-                        output.push_str(&item.show());
+                        output.push_str(&item.show_group());
                     } else {
                         output.push_str(" + ");
-                        output.push_str(&item.show());
+                        output.push_str(&item.show_group());
                     }
                 }
                 output
             }
-            Expression::Neg(expr) => format!(" -{}", expr.show()),
-            Expression::Prod(items) => items
-                .iter()
-                .map(|it| match it {
-                    Expression::Add(_) => format!("({})", it.show()),
-                    _ => it.show(),
-                })
-                .collect::<Vec<String>>()
-                .join(" \\cdot "),
+            Expression::Neg(expr) => format!("-{}", expr.show_group()),
+            Expression::Prod(items) => show_n_ary(" \\cdot ", items),
             Expression::Div(items) => {
                 format!(" \\frac{{{}}}{{{}}} ", items[0].show(), items[1].show())
             }
-            Expression::Unit(_name, value) => value.show(),
+            Expression::Unit(value, _name) => value.show(),
+            Expression::Sqrt(expr) => format!("\\sqrt{{{}}}", expr.show()),
+            Expression::Rand(items) => format!(
+                "\\operatorname{{rand}}({}, {})",
+                items[0].show_group(),
+                items[1].show_group()
+            ),
+            Expression::And(items) => show_n_ary(" && ", items),
+            Expression::Or(items) => show_n_ary(" || ", items),
+            Expression::Not(expr) => format!("\\operatorname{{not}}({})", expr.show()),
+            Expression::Eq(items) => show_n_ary(" == ", items),
+            Expression::Neq(items) => {
+                format!("{} \\not= {}", items[0].show_group(), items[1].show_group())
+            }
+            Expression::Le(items) => show_n_ary(" < ", items),
+            Expression::Leq(items) => show_n_ary(" \\leq ", items),
+            Expression::Ge(items) => show_n_ary(" > ", items),
+            Expression::Geq(items) => show_n_ary(" \\geq ", items),
         }
     }
 
@@ -135,88 +198,194 @@ impl Expression {
                     panic!("Variable {} not in dictionary", name)
                 }
             }
-            Expression::Add(operands) => {
-                let mut result = Magnitude::new(0.0, String::from("¿?"));
+            Expression::Add(operands) => value_n_ary(
+                Magnitude::new(0.0, String::from("¿?")),
+                |a, b| {
+                    let unit = a.compatible_unit(&b).expect(&format!(
+                        "Wrong units adding. Current_result: {:?}, next operand: {:?}\n",
+                        a, b
+                    ));
+                    let value = a.value + b.value;
+                    Magnitude { value, unit }
+                },
+                operands,
+                dict,
+            ),
 
-                for op in operands {
-                    let mag = op.value(dict);
-                    if !(result.unit == "¿?" || mag.unit == "¿?" || result.unit == mag.unit) {
-                        panic!("Wrong units adding {:?}.\n  Current result: {:?},\n  next operand:   {:?}\n",operands, result, mag);
-                    }
-
-                    let value = result.value + mag.value;
-                    let unit = if result.unit == "¿?" {
-                        mag.unit
-                    } else {
-                        result.unit
-                    };
-                    result = Magnitude::new(value, unit)
-                }
-
-                result
-            }
             Expression::Neg(expr) => {
                 let mag = expr.value(dict);
                 Magnitude::new(-1.0 * mag.value, mag.unit)
             }
-            Expression::Prod(operands) => {
-                let mut result = Magnitude::new(1.0, String::from("¿?"));
-
-                for op in operands {
-                    let mag = op.value(dict);
-
-                    result.value *= mag.value;
-                }
-
-                result
-            }
+            Expression::Prod(operands) => value_n_ary(
+                Magnitude::new(1.0, String::from("¿?")),
+                |a, b| Magnitude {
+                    value: a.value * b.value,
+                    unit: String::from("¿?"),
+                },
+                operands,
+                dict,
+            ),
             Expression::Div(operands) => {
                 let num = operands[0].value(dict);
                 let den = operands[1].value(dict);
 
                 Magnitude::new(num.value / den.value, String::from("¿?"))
             }
-            Expression::Unit(unit, expr) => {
+            Expression::Unit(expr, new_unit) => {
                 let mut mag = expr.value(dict);
-                if &mag.unit != "¿?" && &mag.unit != unit {
-                    panic!("Expression {:?} hasn't unit {}", expr, unit);
-                }
-                mag.unit = unit.to_owned();
+                mag.unit = mag
+                    .compatible_unit_str(&new_unit)
+                    .expect(&format!("Expression {:?} hasn't unit {}", expr, new_unit));
+
                 mag
             }
+            Expression::Sqrt(expr) => {
+                let mag = expr.value(dict);
+                Magnitude::new(mag.value.sqrt(), String::from("¿?"))
+            }
+            Expression::Rand(items) => {
+                let min = items[0].value(dict).value;
+                let max = items[1].value(dict).value;
+                let unit = items[0]
+                    .value(dict)
+                    .compatible_unit(&items[1].value(dict))
+                    .expect("Randon value with limits with different units");
+
+                Magnitude {
+                    value: (max - min) * random::<f64>() + min,
+                    unit,
+                }
+            }
+            Expression::And(operands) => value_n_ary(
+                magnitude::TRUE.clone(),
+                |a, b| {
+                    if a == *magnitude::TRUE {
+                        b.clone()
+                    } else {
+                        a.clone()
+                    }
+                },
+                operands,
+                dict,
+            ),
+            Expression::Or(operands) => value_n_ary(
+                magnitude::FALSE.clone(),
+                |a, b| {
+                    if a != *magnitude::TRUE {
+                        b.clone()
+                    } else {
+                        a.clone()
+                    }
+                },
+                operands,
+                dict,
+            ),
+            Expression::Not(expr) => {
+                let value = expr.value(dict);
+
+                if value == *magnitude::TRUE {
+                    magnitude::FALSE.clone()
+                } else {
+                    magnitude::TRUE.clone()
+                }
+            }
+            Expression::Eq(operands) => relation_n_ary(|a, b| a == b, operands, dict),
+            Expression::Neq(operands) => relation_n_ary(|a, b| a != b, operands, dict),
+            Expression::Le(operands) => relation_n_ary(|a, b| a < b, operands, dict),
+            Expression::Leq(operands) => relation_n_ary(|a, b| a <= b, operands, dict),
+            Expression::Ge(operands) => relation_n_ary(|a, b| a > b, operands, dict),
+            Expression::Geq(operands) => relation_n_ary(|a, b| a >= b, operands, dict),
         }
     }
 }
 
 //------------------------------------------------
 
+fn show_n_ary(sep: &str, items: &Arguments) -> String {
+    items
+        .iter()
+        .map(Expression::show_group)
+        .collect::<Vec<String>>()
+        .join(sep)
+}
+
+//------------------------------------------------
+
+fn value_n_ary(
+    start: Magnitude,
+    operand: fn(Magnitude, Magnitude) -> Magnitude,
+    operands: &Arguments,
+    dict: &DictVariables,
+) -> Magnitude {
+    let mut result = start;
+
+    for op in operands {
+        let next = op.value(dict);
+        result = operand(result, next);
+    }
+
+    result
+}
+
+fn relation_n_ary(
+    operand: fn(&Magnitude, &Magnitude) -> bool,
+    operands: &Arguments,
+    dict: &DictVariables,
+) -> Magnitude {
+    let mut iterator = operands.iter();
+    let previous = iterator.next().unwrap();
+    let mut previous = previous.value(dict);
+    for it in iterator {
+        let it = it.value(dict);
+        it.compatible_unit(&previous).expect(&format!(
+            "Wrong Units trying to compare {:?} and {:?}",
+            previous, it
+        ));
+
+        if !(operand(&previous, &it)) {
+            return magnitude::FALSE.clone();
+        }
+        previous = it;
+    }
+    magnitude::TRUE.clone()
+}
+
 //------------------------------------------------
 //Operations over stack
 
-fn pop(stack: &mut Vec<Expression>) -> Expression {
-    match stack.pop() {
-        Some(v) => v,
-        None => panic!("Empty stack"),
-    }
+fn pop(stack: &mut Stack) -> Expression {
+    stack.pop().expect("Empty stack")
 }
 
-fn operator1(f: fn(Expression) -> Expression, stack: &mut Vec<Expression>) {
+fn operator1(f: fn(Expression) -> Expression, stack: &mut Stack) {
     let op1 = pop(stack);
 
     stack.push(f(op1));
 }
 
-fn operator2(f: fn(Expression, Expression) -> Expression, stack: &mut Vec<Expression>) {
+fn operator2(f: fn(Expression, Expression) -> Expression, stack: &mut Stack) {
     let op2 = pop(stack);
     let op1 = pop(stack);
 
     stack.push(f(op1, op2));
 }
 
+fn insert_magnitude(magnitude: Magnitude, stack: &mut Stack) {
+    if magnitude.value >= 0.0 {
+        stack.push(Expression::Magnitude(magnitude));
+    } else {
+        let mag_abs = Magnitude {
+            value: magnitude.value.abs(),
+            unit: magnitude.unit,
+        };
+        stack.push(Expression::Neg(Box::new(Expression::Magnitude(mag_abs))));
+    }
+}
+
 //------------------------------------------------
 //Operations over stack + dict
 
-fn to_dict(stack: &mut Vec<Expression>, dict: &mut DictVariables) {
+fn to_dict(stack: &mut Stack, dict: &mut DictVariables) {
     let variable = pop(stack); // variable name
     let content = pop(stack);
 
@@ -230,7 +399,7 @@ fn to_dict(stack: &mut Vec<Expression>, dict: &mut DictVariables) {
     }
 }
 
-fn from_dict(stack: &mut Vec<Expression>, dict: &DictVariables) {
+fn from_dict(stack: &mut Stack, dict: &DictVariables) {
     let variable = pop(stack); // variable name
 
     match variable {
@@ -249,7 +418,10 @@ fn from_dict(stack: &mut Vec<Expression>, dict: &DictVariables) {
 }
 
 //------------------------------------------------
-//Operations over expressions
+// Operations with units
+
+//------------------------------------------------
+// Easy operations over expressions
 
 fn units(value: Expression, unit: Expression) -> Expression {
     let unit = match unit {
@@ -257,12 +429,27 @@ fn units(value: Expression, unit: Expression) -> Expression {
         _ => panic!("Impossible to use assign unit"),
     };
 
-    Expression::Unit(unit, Box::new(value))
+    Expression::Unit(Box::new(value), unit)
 }
 
 fn nounits(value: Expression) -> Expression {
-    Expression::Unit(String::new(), Box::new(value))
+    Expression::Unit(Box::new(value), String::new())
 }
+
+fn sqrt_expression(value: Expression) -> Expression {
+    Expression::Sqrt(Box::new(value))
+}
+
+fn rand_expression(op1: Expression, op2: Expression) -> Expression {
+    Expression::Rand(vec![op1, op2])
+}
+
+fn neq_expression(op1: Expression, op2: Expression) -> Expression {
+    Expression::Neq(vec![op1, op2])
+}
+
+//------------------------------------------------
+// Complex operations over expressions
 
 fn add_expression(op1: Expression, op2: Expression) -> Expression {
     // factors extraction
@@ -387,5 +574,166 @@ fn div_expression(op1: Expression, op2: Expression) -> Expression {
         Expression::Div(vec![num, den])
     } else {
         Expression::Neg(Box::new(Expression::Div(vec![num, den])))
+    }
+}
+
+fn and_expression(op1: Expression, op2: Expression) -> Expression {
+    // factors extraction
+    let mut operands1 = match op1 {
+        Expression::And(operands) => operands,
+        _ => vec![op1],
+    };
+
+    let mut operands2 = match op2 {
+        Expression::And(operands) => operands,
+        _ => vec![op2],
+    };
+
+    // operation
+    operands1.append(&mut operands2);
+
+    if operands1.len() == 1 {
+        operands1[0].clone()
+    } else {
+        Expression::And(operands1)
+    }
+}
+
+fn or_expression(op1: Expression, op2: Expression) -> Expression {
+    // factors extraction
+    let mut operands1 = match op1 {
+        Expression::Or(operands) => operands,
+        _ => vec![op1],
+    };
+
+    let mut operands2 = match op2 {
+        Expression::Or(operands) => operands,
+        _ => vec![op2],
+    };
+
+    // operation
+    operands1.append(&mut operands2);
+
+    if operands1.len() == 1 {
+        operands1[0].clone()
+    } else {
+        Expression::Or(operands1)
+    }
+}
+
+fn not_expression(op1: Expression) -> Expression {
+    match op1 {
+        Expression::Not(expr) => *expr,
+        _ => Expression::Not(Box::new(op1)),
+    }
+}
+
+fn eq_expression(op1: Expression, op2: Expression) -> Expression {
+    // factors extraction
+    let mut operands1 = match op1 {
+        Expression::Eq(operands) => operands,
+        _ => vec![op1],
+    };
+
+    let mut operands2 = match op2 {
+        Expression::Eq(operands) => operands,
+        _ => vec![op2],
+    };
+
+    // operation
+    operands1.append(&mut operands2);
+
+    if operands1.len() == 1 {
+        operands1[0].clone()
+    } else {
+        Expression::Eq(operands1)
+    }
+}
+
+fn le_expression(op1: Expression, op2: Expression) -> Expression {
+    // factors extraction
+    let mut operands1 = match op1 {
+        Expression::Le(operands) => operands,
+        _ => vec![op1],
+    };
+
+    let mut operands2 = match op2 {
+        Expression::Le(operands) => operands,
+        _ => vec![op2],
+    };
+
+    // operation
+    operands1.append(&mut operands2);
+
+    if operands1.len() == 1 {
+        operands1[0].clone()
+    } else {
+        Expression::Le(operands1)
+    }
+}
+
+fn leq_expression(op1: Expression, op2: Expression) -> Expression {
+    // factors extraction
+    let mut operands1 = match op1 {
+        Expression::Leq(operands) => operands,
+        _ => vec![op1],
+    };
+
+    let mut operands2 = match op2 {
+        Expression::Leq(operands) => operands,
+        _ => vec![op2],
+    };
+
+    // operation
+    operands1.append(&mut operands2);
+
+    if operands1.len() == 1 {
+        operands1[0].clone()
+    } else {
+        Expression::Leq(operands1)
+    }
+}
+
+fn ge_expression(op1: Expression, op2: Expression) -> Expression {
+    // factors extraction
+    let mut operands1 = match op1 {
+        Expression::Ge(operands) => operands,
+        _ => vec![op1],
+    };
+
+    let mut operands2 = match op2 {
+        Expression::Ge(operands) => operands,
+        _ => vec![op2],
+    };
+
+    // operation
+    operands1.append(&mut operands2);
+
+    if operands1.len() == 1 {
+        operands1[0].clone()
+    } else {
+        Expression::Ge(operands1)
+    }
+}
+
+fn geq_expression(op1: Expression, op2: Expression) -> Expression {
+    // factors extraction
+    let mut operands1 = match op1 {
+        Expression::Geq(operands) => operands,
+        _ => vec![op1],
+    };
+
+    let mut operands2 = match op2 {
+        Expression::Geq(operands) => operands,
+        _ => vec![op2],
+    };
+
+    // operation
+    operands1.append(&mut operands2);
+
+    if operands1.len() == 1 {
+        operands1[0].clone()
+    } else {
+        Expression::Geq(operands1)
     }
 }

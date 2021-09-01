@@ -12,6 +12,7 @@
 use lazy_static::lazy_static;
 use maplit::hashmap;
 use regex::Regex;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -56,6 +57,9 @@ lazy_static! {
                 "ohm" => "\\Omega",
             };
 
+// Booleans constants
+            pub static ref TRUE: Magnitude = Magnitude::new(1.0,String::from("bool"));
+            pub static ref FALSE: Magnitude = Magnitude::new(1.0,String::from("bool"));
         }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -98,6 +102,42 @@ impl Magnitude {
 
         Magnitude { value, unit }
     }
+
+    /// Determines if self and b have compatible unit (same unit or unit and unknown)
+    /// return the Some(unit) or None
+    pub fn compatible_unit(&self, b: &Self) -> Option<String> {
+        if self.unit == "¿?" {
+            return Some(b.unit.clone());
+        } else if b.unit == "¿?" {
+            return Some(self.unit.clone());
+        } else if self.unit == b.unit {
+            return Some(self.unit.clone());
+        } else {
+            return None;
+        }
+    }
+
+    pub fn compatible_unit_str(&self, unit: &str) -> Option<String> {
+        if self.unit == "¿?" {
+            return Some(unit.to_string());
+        } else if unit == "¿?" {
+            return Some(self.unit.clone());
+        } else if self.unit == unit {
+            return Some(unit.to_string());
+        } else {
+            return None;
+        }
+    }
+}
+
+impl PartialOrd for Magnitude {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if self.unit != other.unit {
+            return None;
+        }
+
+        self.value.partial_cmp(&other.value)
+    }
 }
 
 impl fmt::Display for Magnitude {
@@ -114,7 +154,7 @@ impl fmt::Display for Magnitude {
         let sign_str: &str;
         let value_abs: ValueType;
 
-        if self.value > 0.0 {
+        if self.value >= 0.0 {
             sign_str = "";
             value_abs = self.value;
         } else {

@@ -1,0 +1,7 @@
+---
+drop : " n ! "
+dup : " n ! n @ n @ "
+over : " n2 ! n1 ! n1 @ n2 @ n1 @ "
+swap : " n2 ! n1 ! n2 @ n1 @ "
+nip : " n2 ! n1 ! n2 @ "
+

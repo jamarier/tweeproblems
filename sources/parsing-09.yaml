@@ -1,0 +1,16 @@
+---
+title: panic because macros is inside alt
+
+passages:
+  - macros: macros-0.yaml
+  - macros:
+    - macros-1.yaml
+    - macros-2.yaml
+  - pass:
+      text: "{{; 1 tres + }}"
+  - alt:
+    - macros: macros-0.yaml
+    - pass:
+        text: "uno"
+    - pass: 
+        text: "dos"

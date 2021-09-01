@@ -1,0 +1,23 @@
+---
+title: Testing relations
+
+passages:
+  - pass:
+      text: |
+        {{; 1ohm 2ohm < }}
+        {{; 1ohm 2ohm <= }}
+        {{; 1ohm 2ohm > }}
+        {{; 1ohm 2ohm >= }}
+        {{; 1ohm 2ohm == }}
+        {{; 1ohm 2ohm != }}
+
+        {{; 1ohm 1ohm < }}
+        {{; 1ohm 1ohm <= }}
+        {{; 1ohm 1ohm > }}
+        {{; 1ohm 1ohm >= }}
+        {{; 1ohm 1ohm == }}
+        {{; 1ohm 1ohm != }}
+        
+        {{; 1 2 3 < <}}
+        {{; 1 2 3 <= <= }}
+
