@@ -59,7 +59,7 @@ lazy_static! {
 
 // Booleans constants
             pub static ref TRUE: Magnitude = Magnitude::new(1.0,String::from("bool"));
-            pub static ref FALSE: Magnitude = Magnitude::new(1.0,String::from("bool"));
+            pub static ref FALSE: Magnitude = Magnitude::new(0.0,String::from("bool"));
         }
 
 #[derive(Debug, Clone, PartialEq)]
