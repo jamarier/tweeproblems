@@ -46,7 +46,7 @@ Specific from Tweeproblems:
 
 ## YAML format
 
-(it is recomended to study examples in source dir)
+(it is recomended to study, yaml format and examples in source dir)
 
 Some previous definitions:
 
@@ -82,6 +82,9 @@ _follow_ or _note_. The markers have to be at the beggining of a row (column 0).
 * "..." (three '.') Following text (in same line too) is _follow_.
 * "---" (three '-') Following text (in same line too) is _note_.
 
+It is more confortable to use '|' marker of yaml format to write multiline
+text of gates.
+
 The gate is interpreted as a FSM. It starts as _text_, and switch with each
 mark. There isn't limit in order or amount or markers.
 
@@ -110,68 +113,154 @@ for Sequential, _alt_ for alternatives and _con_ for concurrent. In each case,
 the array express the posibilities. Array can be from 1 element (without any
 sense) or more. 
 
+## Math expressions
 
+As it is said before, tweeproblemas comes with an math evaluator. The math mode
+is applied in each group of text surrounded by "{{" and "}}" marks (*on the same line*)
 
-## MAGNITUDES
+The main structure is:
 
-* Always without space but '____' can be used to visually separate parts. 
-  All '_' are omited.
+    "{{"<type of injection> (<variable name> =)? <math expresion> "}}"
 
-  Ex: 10_km, 10km, 10_000m, 10k_m, are all the same
+* Type of injection gives information of how the math expression is rendered 
+  y showed into the story. A math expression can be showed with its definition
+  (the mathematical operations to do) or its value (the result of those 
+  operations). The type of injection determines which one (or both) are going to
+  be shown.
 
-* 2 parts: value and units.
-  * value is described as a float number
-  * unit is a string with arbitrary content
-    * if first letter of all unit is a multiple suffix ('k', 'M', 'm', ...)
-      that factor is applies. 
-    * factor only applies if unit string have more than one letter, so "m" is metter not milli.
-    * factor only applies to the first char of string not in every unit of a compound unit (like "km/h"). 
-      _ BE CAREFUL: _ only is the first letter of the string. So km/km is 10^3 of "m/km"
-    * it's possible to force no factor with '#' factor. 
-      * So unit="mother" is 10^-3 of "other" 
-      * and unit="#mother" is 1 of "mother"
-    
-      # character '#' only is needed in magnitude parseing not in expression unit coercion. 
+  The type injection is next to "{{" mark without spaces between.
 
-## Injecting formulas 
-  Passages are read line by line
+* It is possible assign a name to the result of the expression. And later use 
+  that name to retrieve the value of the expression. The name is any valid latex
+  eq expression without spaces. So, it is possible to use: "R", "R\_1", "R\_{12}", 
+  etc.
 
-  * '!' at first copy the rest of line to the output without modification
+  Math expression are not equations. So "x+1=2" doesn't assign 1 to x. It assign the
+  value 2 to the variable name "x+1" 
 
-  * In source: formulas and values are inside a double with this structure:
-    "{{" <type of injection> (<Variablename> =)? <Expresion> "}}"
+  The binding of the variable name is global. And it keeps for all the rest of the
+  interactive story. It is possible, rebind a variable with other expression but, 
+  the resulting value has to be the same of the previous expression. So it is easier
+  consider the assigns as of constant values (not must be constant expression).
 
-  * There are three escape sequences:
-    * "\\" to escape '\'
-    * "\{" to escape '{'  and 
-    * "\}" to escape '}'
+  It is not compulsory assign a name to every expression.
 
-    So it is possible to write "{{ \frac{1}{n_{2}\} }}" whithout exit formulas too soon.
+  An example of valid expressions in several passages:
 
-  * Type of injection:
-    * "." only show value of Expression (MathJax Format)
-    * "," only show formula of Expression (MathJax Format)
-    * ";" show formula and value (MathJax Format)
-    * "_" calculate effects of Expression but doesn't show anything
-    * "!" calculate value (without units) and insert into text.
+      ... this is some text {{. R_1 = 1 1 +}} more text ...
+      ... Another line or passage citing the variable {{, R_1}} ...
+      ... this is other line or other passage and {{. R_1 = 2}} ...
+      there no problem here. 
 
-  * A formula without text ([:alpha:]) before and after it, will be shown as display formula. Otherwise, it will be shown as inline.
+* The math expression is the operations and values to be assigned. The expressions 
+  are notated as RPN (Reverse Polish Notation) where the arguments are first and 
+  the operator is last. 
+
+  In a posterior section [Expressions](#expressions) the ideas after maths expressions
+  are developed.
+
+A math expression alone in a row (with other text in same row) will be rendered as 
+display mode. In anyother case, the formula will be rendered as inline mode of MathJax
+
+### Type of injection:
+
+The injection defines how to render the expression. Main ideas:
+* value is the magnitude: numeric value and units ("no units" is a unit too)
+
+* formula is the calculations to get the value. And it is what it is written 
+  in math expression. So, the value of both expression in "{{\_ R = 1 1 +}}" and 
+  "{{\; R }}" it is 2, but the formula is "1+1" in first expression and "R" (in 
+  second expression).
+
+Types of injection and meaning:
+* '.' only show value of Expression (MathJax Format)
+* ',' only show formula of Expression (MathJax Format)
+* ';' show formula and value separated with '=' sign (MathJax Format)
+* '\_' calculate effects of Expression but doesn't show anything. Sometimes
+  is more práctical calculate the solution before of data of exercise. With 
+  '\_' is possible calculate and bind a variable without show anything.
+* '!' calculate value (without units) and insert into text.
+
+### Escaping values
+
+  if tweeproblemas interfere with twine/SugarBox commands, it is possible to 
+  inhibit tweeproblemas processing: 
+  
+  '!' at first column of file copy the rest of line to the output without modification.
+
+  Another possibility is to escape individual characters. There are three escape sequences:
+* "\\\\" to escape '\\'
+* "\\{" to escape '{'  and 
+* "\\}" to escape '}'
+
+  That allow to use directly MathJax notation without launch math evaluator( e.g.
+  the expression of MathJax \\( {\\{ 1 + 2 }} \\)  )
 
 ## Expressions
-  Expressions are a RPN notation.
+  The expressions are notated as RPN. Each element must be separated by spaces. 
 
-### Expressions units
+  There are four types of elements on expressions:
+
+* Magnitude: numeric value with units.
+* Variables: previously defined
+* Operators: mathematical operators
+* Macros: typical formulas or constants of frequent use.
+
+
+### MAGNITUDES
+
+* Always without space but '\_' can be used to visually separate parts. 
+  All '\_' are omited in parsing.
+
+  Ex: 10\_km, 10km, 10\_000m, 10k\_m, are all the same magnitude
+
+* 2 parts: value and units.
+
+#### Value
+value is described as a float number. It can be written using dot or exponent 
+format: 1200.0 or 1.2e3
+
+#### Units
+unit is a string with arbitrary content. They are not really units. 
+
+But:
+* if first letter of all unit is a multiple suffix ('k', 'M', 'm', ...)
+      that factor is applied and deleted from unit name. 
+* factor only applies if unit string have more than one letter, so "m" is metter not milli.
+* factor only applies to the first char of string not in every unit of a compound unit (like "km/h"). 
+       
+  **BE CAREFUL**: only is the first letter of the string. So km/km is 10^3 of "m/km"
+
+* it's possible to force no factor with '#' factor. So, unit="mother" is 10^-3 of "other"
+  and unit="#mother" is 1 of "mother"
+    
+  character '#' only is needed in magnitude parseing not in expression unit coercion. 
+
+### Variables
+Any text not identified as magnitude, operator or formula is marked as Variable. 
+
+In the evaluation of the expression, the value of variable is searched in variable
+dictionary. If the variable is not defined. A panic will be thrown.
+
+### Operators
+
+#### Arithmetic operators
+
+At the moment, they are:
+"+", "-", "neg" (negate: change of sign), "\*" (product) "/" (division)
+
+#### Expressions units
   Expressions have a faux unit verification. Not always works (sometimes it works, depends on operation). 
   So, there are a especial unit "¿?" meaning unknown unit. Everytime an operation is not cappable to 
-  determinate output unit, the unit change to "¿?". 
+  determinate the output unit, the unit change to "¿?". 
 
   * ":" (expr unit -- expr) unit verification/coercion
     
-    if <expr> have a definite unit, this must be <unit> or a panic is thrown
+    if <expr> have a defined unit, this must be <unit> or a panic is thrown
 
     if <expr> have a unknown unit -> it assign <unit>
 
-    _BE CAREFUL_ #' hasn't any special meaning so, "1#mother #mother :" will panic because compares "mother" with "#mother"
+    **BE CAREFUL** #' hasn't any special meaning so, "1#mother #mother :" will panic because compares "mother" with "#mother"
     correct way is "1#mother mother :"
 
   * "::" (expr -- expr) unit verification/coercion
@@ -184,8 +273,12 @@ sense) or more.
     in case of dirty calculations: change unit without changing the value (multiply by 1)
     e.g.  "value 1 * new_unit :"
 
+#### Asign parameters
+  * "!" (expr name -- ) assign expr to name
+  * "@" (name -- expr ) retrieve expr saved into name
 
-## Adding Macros
+
+### Adding Macros
 
   Las macros no son reentrantes
   Si pueden llamar a otras macros (con cuidadito)
