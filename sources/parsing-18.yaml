@@ -1,0 +1,11 @@
+---
+title: Testing pow and log10 log 
+
+passages:
+  - pass:
+      text: |
+        Be {{; 4ohm 2 pow}}
+        {{; 100 log }}
+        {{; 200 ln }}
+
+

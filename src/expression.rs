@@ -21,9 +21,13 @@ pub enum Expression {
     Neg(Argument),
     Prod(Arguments),
     Div(Arguments),
+
     Unit(Argument, String), // Assign Unit if unit = "¿?", verify unit if previus expression have unit
     Sqrt(Argument),
+    Log(Argument),
+    Ln(Argument),
     Rand(Arguments),
+    Pow(Arguments),
 
     And(Arguments),
     Or(Arguments),
@@ -104,7 +108,10 @@ impl Expression {
                     "*" => operator2(prod_expression, stack),
                     "/" => operator2(div_expression, stack),
                     "sqrt" => operator1(sqrt_expression, stack),
+                    "log" => operator1(log_expression, stack),
+                    "ln" => operator1(ln_expression, stack),
                     "rand" => operator2(rand_expression, stack),
+                    "pow" => operator2(pow_expression, stack),
 
                     // logical and relational operators
                     "and" => operator2(and_expression, stack),
@@ -137,6 +144,8 @@ impl Expression {
             Expression::Variable(..) => self.show(),
             Expression::Unit(..) => self.show(),
             Expression::Sqrt(..) => self.show(),
+            Expression::Log(..) => self.show(),
+            Expression::Ln(..) => self.show(),
             Expression::Rand(..) => self.show(),
             Expression::Not(..) => self.show(),
             _ => format!("( {} )", self.show()),
@@ -169,11 +178,14 @@ impl Expression {
             }
             Expression::Unit(value, _name) => value.show(),
             Expression::Sqrt(expr) => format!("\\sqrt{{{}}}", expr.show()),
+            Expression::Log(expr) => format!("\\operatorname{{log}}({})", expr.show()),
+            Expression::Ln(expr) => format!("\\operatorname{{ln}}({})", expr.show()),
             Expression::Rand(items) => format!(
                 "\\operatorname{{rand}}({}, {})",
                 items[0].show_group(),
                 items[1].show_group()
             ),
+            Expression::Pow(items) => format!("{}^{{{}}}", items[0].show_group(),items[1].show() ),
             Expression::And(items) => show_n_ary(" && ", items),
             Expression::Or(items) => show_n_ary(" || ", items),
             Expression::Not(expr) => format!("\\operatorname{{not}}({})", expr.show()),
@@ -243,6 +255,17 @@ impl Expression {
                 let mag = expr.value(dict);
                 Magnitude::new(mag.value.sqrt(), String::from("¿?"))
             }
+            Expression::Log(expr) => {
+                let mag = expr.value(dict);
+                mag.compatible_unit_str("").expect("log with arg units wrong");
+                Magnitude::new(mag.value.log10(), String::from(""))
+            }
+            Expression::Ln(expr) => {
+                let mag = expr.value(dict);
+                mag.compatible_unit_str("").expect("ln with arg units wrong");
+                Magnitude::new(mag.value.ln(), String::from(""))
+            }
+
             Expression::Rand(items) => {
                 let min = items[0].value(dict).value;
                 let max = items[1].value(dict).value;
@@ -255,6 +278,13 @@ impl Expression {
                     value: (max - min) * random::<f64>() + min,
                     unit,
                 }
+            }
+            Expression::Pow(operands) => {
+                let base = operands[0].value(dict);
+                let exp = operands[1].value(dict);
+
+                exp.compatible_unit_str("").expect("exponent with arg units wrong");
+                Magnitude::new(base.value.powf(exp.value), String::from("¿?"))
             }
             Expression::And(operands) => value_n_ary(
                 magnitude::TRUE.clone(),
@@ -440,8 +470,20 @@ fn sqrt_expression(value: Expression) -> Expression {
     Expression::Sqrt(Box::new(value))
 }
 
+fn log_expression(value: Expression) -> Expression {
+    Expression::Log(Box::new(value))
+}
+
+fn ln_expression(value: Expression) -> Expression {
+    Expression::Ln(Box::new(value))
+}
+
 fn rand_expression(op1: Expression, op2: Expression) -> Expression {
     Expression::Rand(vec![op1, op2])
+}
+
+fn pow_expression(op1: Expression, op2: Expression) -> Expression {
+    Expression::Pow(vec![op1, op2])
 }
 
 fn neq_expression(op1: Expression, op2: Expression) -> Expression {
