@@ -437,8 +437,7 @@ impl PassageTree {
         for bad_gate in bad_gates {
             output_gates.push(bad_gate.passage_choice(&sub_link));
             // TODO I18N
-            suboutput +=
-                &bad_gate.passage_bad_note(&sub_link, "Volver a intentarlo", current_link);
+            suboutput += &bad_gate.passage_bad_note(&sub_link, "Volver a intentarlo", current_link);
 
             sub_link.inc();
         }
@@ -693,7 +692,7 @@ fn convert_seq(
     for elem in elems {
         if let Some(paths) = is_macros("paths", elem) {
             mac.add_paths(paths);
-        } else if let Some(macros_files) = is_macros("macros",elem) {
+        } else if let Some(macros_files) = is_macros("macros", elem) {
             mac.include_macros(macros_files);
         } else {
             let (passelem, ndict, nmac) = convert_yaml(elem, &dict, &mac);
@@ -745,9 +744,9 @@ fn convert_alt(
 }
 
 fn convert_cond(
-    cond: & Yaml,
+    cond: &Yaml,
     cont: &Yaml,
-    dictionary: & DictVariables,
+    dictionary: &DictVariables,
     macros: &Macros,
 ) -> (PassageElem, DictVariables, Macros) {
     let cond = Gate::from(cond.as_str().unwrap(), dictionary, macros);

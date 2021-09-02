@@ -55,8 +55,9 @@ impl Macros {
     pub fn include_macros(&mut self, macros_files: Vec<String>) {
         for file in macros_files {
             let file = locate_file(Path::new(&file), &self.paths)
-                .expect(&format!("file {:?} not found", file));
-            let contents = fs::read_to_string(file).expect("Unable to read file");
+                .unwrap_or_else(|_| panic!("file {:?} not found", file));
+            let contents =
+                fs::read_to_string(file).unwrap_or_else(|_| panic!("Unable to read file"));
             let docs = YamlLoader::load_from_str(&contents).unwrap();
             let doc = &docs[0];
 

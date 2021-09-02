@@ -31,11 +31,11 @@ fn main() -> Result<()> {
         )
         .get_matches();
 
-    let mut paths : Vec<String> = vec![];
+    let mut paths: Vec<String> = vec![];
     if let Some(p) = args.values_of("paths") {
         paths.extend(p.map(|x| x.to_string()));
     }
-    paths.insert(0,String::from("."));
+    paths.insert(0, String::from("."));
 
     let input_file = check_input_file(Path::new(args.value_of("INPUT").unwrap()))?;
     let input_file = macros::locate_file(input_file, &paths)?;
@@ -44,7 +44,7 @@ fn main() -> Result<()> {
     println!("input file: {:?}", input_file);
     println!("output file: {:?}", output_file);
 
-    let exercise = Exercise::load_exercise(&input_file,paths)?;
+    let exercise = Exercise::load_exercise(&input_file, paths)?;
 
     let render = exercise.render();
 
@@ -64,12 +64,12 @@ fn check_input_file(input: &Path) -> Result<&Path> {
         }
     }
 
-/*
-    // Check if file exists
-    if !input.exists() {
-        bail!("INPUT file doesn't exists.")
-    }
-*/
+    /*
+        // Check if file exists
+        if !input.exists() {
+            bail!("INPUT file doesn't exists.")
+        }
+    */
 
     Ok(input)
 }

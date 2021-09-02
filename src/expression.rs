@@ -12,6 +12,7 @@ pub type DictVariables = HashMap<String, Expression>;
 pub type Stack = Vec<Expression>;
 pub type Argument = Box<Expression>;
 pub type Arguments = Vec<Expression>;
+pub type ArgumentsSlice = [Expression];
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
@@ -185,7 +186,7 @@ impl Expression {
                 items[0].show_group(),
                 items[1].show_group()
             ),
-            Expression::Pow(items) => format!("{}^{{{}}}", items[0].show_group(),items[1].show() ),
+            Expression::Pow(items) => format!("{}^{{{}}}", items[0].show_group(), items[1].show()),
             Expression::And(items) => show_n_ary(" && ", items),
             Expression::Or(items) => show_n_ary(" || ", items),
             Expression::Not(expr) => format!("\\operatorname{{not}}({})", expr.show()),
@@ -213,10 +214,12 @@ impl Expression {
             Expression::Add(operands) => value_n_ary(
                 Magnitude::new(0.0, String::from("¿?")),
                 |a, b| {
-                    let unit = a.compatible_unit(&b).expect(&format!(
-                        "Wrong units adding. Current_result: {:?}, next operand: {:?}\n",
-                        a, b
-                    ));
+                    let unit = a.compatible_unit(&b).unwrap_or_else(|| {
+                        panic!(
+                            "Wrong units adding. Current_result: {:?}, next operand: {:?}\n",
+                            a, b
+                        )
+                    });
                     let value = a.value + b.value;
                     Magnitude { value, unit }
                 },
@@ -247,7 +250,7 @@ impl Expression {
                 let mut mag = expr.value(dict);
                 mag.unit = mag
                     .compatible_unit_str(new_unit)
-                    .expect(&format!("Expression {:?} hasn't unit {}", expr, new_unit));
+                    .unwrap_or_else(|| panic!("Expression {:?} hasn't unit {}", expr, new_unit));
 
                 mag
             }
@@ -257,12 +260,14 @@ impl Expression {
             }
             Expression::Log(expr) => {
                 let mag = expr.value(dict);
-                mag.compatible_unit_str("").expect("log with arg units wrong");
+                mag.compatible_unit_str("")
+                    .expect("log with arg units wrong");
                 Magnitude::new(mag.value.log10(), String::from(""))
             }
             Expression::Ln(expr) => {
                 let mag = expr.value(dict);
-                mag.compatible_unit_str("").expect("ln with arg units wrong");
+                mag.compatible_unit_str("")
+                    .expect("ln with arg units wrong");
                 Magnitude::new(mag.value.ln(), String::from(""))
             }
 
@@ -283,7 +288,8 @@ impl Expression {
                 let base = operands[0].value(dict);
                 let exp = operands[1].value(dict);
 
-                exp.compatible_unit_str("").expect("exponent with arg units wrong");
+                exp.compatible_unit_str("")
+                    .expect("exponent with arg units wrong");
                 Magnitude::new(base.value.powf(exp.value), String::from("¿?"))
             }
             Expression::And(operands) => value_n_ary(
@@ -331,7 +337,7 @@ impl Expression {
 
 //------------------------------------------------
 
-fn show_n_ary(sep: &str, items: &Arguments) -> String {
+fn show_n_ary(sep: &str, items: &ArgumentsSlice) -> String {
     items
         .iter()
         .map(Expression::show_group)
@@ -344,7 +350,7 @@ fn show_n_ary(sep: &str, items: &Arguments) -> String {
 fn value_n_ary(
     start: Magnitude,
     operand: fn(Magnitude, Magnitude) -> Magnitude,
-    operands: &Arguments,
+    operands: &ArgumentsSlice,
     dict: &DictVariables,
 ) -> Magnitude {
     let mut result = start;
@@ -359,7 +365,7 @@ fn value_n_ary(
 
 fn relation_n_ary(
     operand: fn(&Magnitude, &Magnitude) -> bool,
-    operands: &Arguments,
+    operands: &ArgumentsSlice,
     dict: &DictVariables,
 ) -> Magnitude {
     let mut iterator = operands.iter();
@@ -367,10 +373,8 @@ fn relation_n_ary(
     let mut previous = previous.value(dict);
     for it in iterator {
         let it = it.value(dict);
-        it.compatible_unit(&previous).expect(&format!(
-            "Wrong Units trying to compare {:?} and {:?}",
-            previous, it
-        ));
+        it.compatible_unit(&previous)
+            .unwrap_or_else(|| panic!("Wrong Units trying to compare {:?} and {:?}", previous, it));
 
         if !(operand(&previous, &it)) {
             return magnitude::FALSE.clone();
