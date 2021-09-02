@@ -1,41 +1,71 @@
 // Structures to support the use of formulas in histories
 
-//use lazy_static::lazy_static;
-//use maplit::hashmap;
+use anyhow::{bail, Result};
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use yaml_rust::YamlLoader;
 
-pub type Macros = HashMap<String, String>;
+//--------------------------------------------
+// Paths
 
-pub fn include_macros(macros: Macros, macros_files: &[PathBuf]) -> Macros {
-    let mut macros = macros;
+pub fn locate_file(input: &Path, paths: &[String]) -> Result<PathBuf> {
+    if input.is_absolute() {
+        if !input.exists() {
+            bail!("File {:?} doesn't exists.", input)
+        } else {
+            Ok(input.to_path_buf())
+        }
+    } else {
+        for path in paths {
+            let test_input = Path::new(path).join(input);
+            //println!("testing file: {:?}", test_input);
+            if test_input.exists() {
+                return Ok(test_input);
+            }
+        }
 
-    for file in macros_files {
-        let contents = fs::read_to_string(file).expect("Unable to read file");
-        let docs = YamlLoader::load_from_str(&contents).unwrap();
-        let doc = &docs[0];
+        bail!("File {:?} doesn't exists.", input)
+    }
+}
 
-        for (key, value) in doc.as_hash().unwrap() {
-            macros.insert(
-                key.as_str().unwrap().to_string(),
-                value.as_str().unwrap().to_string(),
-            );
+//--------------------------------------------
+// Macros
+
+#[derive(Clone, Debug)]
+pub struct Macros {
+    pub macros: HashMap<String, String>,
+    paths: Vec<String>,
+}
+
+impl Macros {
+    pub fn new() -> Self {
+        Macros {
+            macros: HashMap::new(),
+            paths: Vec::new(),
         }
     }
 
-    macros
-}
+    pub fn add_paths(&mut self, new_paths: Vec<String>) {
+        for path in new_paths {
+            self.paths.push(path);
+        }
+    }
 
-/*
-lazy_static! {
-    pub static ref FORMULAS: Formulas = hashmap! {
-        "ohm_law_.RI" => " A : I !  ohm : R !   I @ R @ *    V : ",
-        "ohm_law_V.I" => " A : I !  V : V !  V @ I @ /    ohm : ",
-        "ohm_law_VR." => " ohm : R !    V : V !     V @ R @ /   A : ",
+    pub fn include_macros(&mut self, macros_files: Vec<String>) {
+        for file in macros_files {
+            let file = locate_file(Path::new(&file), &self.paths)
+                .expect(&format!("file {:?} not found", file));
+            let contents = fs::read_to_string(file).expect("Unable to read file");
+            let docs = YamlLoader::load_from_str(&contents).unwrap();
+            let doc = &docs[0];
 
-        "parallel" => " ohm : R2 !  ohm : R1 ! R1 @ R2 @ * R1 @ R2 @ + / ohm : "
-    };
+            for (key, value) in doc.as_hash().unwrap() {
+                self.macros.insert(
+                    key.as_str().unwrap().to_string(),
+                    value.as_str().unwrap().to_string(),
+                );
+            }
+        }
+    }
 }
-*/

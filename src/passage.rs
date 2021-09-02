@@ -6,15 +6,13 @@ use rand::seq::SliceRandom;
 use regex::Regex;
 use std::fmt;
 use std::fs;
-//use std::fs::File;
-//use std::io::BufReader;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use uuid::Uuid;
 use yaml_rust::yaml::Hash;
 use yaml_rust::{Yaml, YamlLoader};
 
 use crate::expression::{DictVariables, Expression};
-use crate::macros::{include_macros, Macros};
+use crate::macros::Macros;
 
 // Gate: info about an option
 #[derive(Debug, Clone)]
@@ -300,7 +298,7 @@ pub struct Passage {
 }
 
 impl Passage {
-    fn is_empty(&self)-> bool {
+    fn is_empty(&self) -> bool {
         self.text.is_empty()
     }
 }
@@ -399,7 +397,9 @@ impl PassageTree {
 
     fn is_endnode(&self) -> bool {
         for node in &self.1 {
-            if !node.0.is_empty() { return false; }
+            if !node.0.is_empty() {
+                return false;
+            }
         }
 
         true
@@ -508,18 +508,23 @@ pub struct Exercise {
 }
 
 impl Exercise {
-    pub fn load_exercise(file: &Path) -> Result<Exercise> {
+    pub fn load_exercise(file: &Path, paths: Vec<String>) -> Result<Exercise> {
         let contents = fs::read_to_string(file).expect("Unable to read file");
         let docs = YamlLoader::load_from_str(&contents).unwrap();
         let doc = &docs[0];
 
         let variables = DictVariables::new();
 
-        let macros = if let Some(macros_files) = is_macro(doc) {
-            include_macros(Macros::new(), &macros_files)
-        } else {
-            Macros::new()
-        };
+        let mut macros = Macros::new();
+        macros.add_paths(vec![file.parent().unwrap().to_str().unwrap().to_string()]);
+        macros.add_paths(paths);
+
+        if let Some(paths) = is_macros("paths", doc) {
+            macros.add_paths(paths);
+        }
+        if let Some(macros_files) = is_macros("macros", doc) {
+            macros.include_macros(macros_files);
+        }
 
         let title = doc["title"].as_str().unwrap().to_owned();
 
@@ -598,14 +603,14 @@ fn main_key(hash: &Hash) -> Option<&str> {
     None
 }
 
-fn is_macro(elem: &Yaml) -> Option<Vec<PathBuf>> {
-    match &elem["macros"] {
-        Yaml::String(s) => Some(vec![PathBuf::from(s)]),
+fn is_macros(tag: &'static str, elem: &Yaml) -> Option<Vec<String>> {
+    match &elem[tag] {
+        Yaml::String(s) => Some(vec![s.to_string()]),
         Yaml::Array(a) => {
-            let mut vector: Vec<PathBuf> = vec![];
+            let mut vector: Vec<String> = vec![];
             for item in a {
                 if let Yaml::String(s) = item {
-                    vector.push(PathBuf::from(s));
+                    vector.push(s.to_string());
                 }
             }
             if vector.is_empty() {
@@ -631,6 +636,7 @@ fn convert_yaml(
             Some("alt") => convert_alt(yaml["alt"].as_vec().unwrap(), dictionary, macros),
             Some("con") => convert_con(yaml["con"].as_vec().unwrap(), dictionary, macros),
             Some("cond") => convert_cond(&yaml["cond"], &yaml["cont"], dictionary, macros),
+            Some("paths") => panic!("'paths' directive misplaced"),
             Some("macros") => panic!("'macros' directive misplaced"),
             _ => panic!("I don't know how to process {:?}", hash),
         },
@@ -685,8 +691,10 @@ fn convert_seq(
     let mut passages = Vec::<PassageElem>::new();
 
     for elem in elems {
-        if let Some(macros_files) = is_macro(elem) {
-            mac = include_macros(mac, &macros_files);
+        if let Some(paths) = is_macros("paths", elem) {
+            mac.add_paths(paths);
+        } else if let Some(macros_files) = is_macros("macros",elem) {
+            mac.include_macros(macros_files);
         } else {
             let (passelem, ndict, nmac) = convert_yaml(elem, &dict, &mac);
             dict = ndict;
@@ -737,9 +745,9 @@ fn convert_alt(
 }
 
 fn convert_cond(
-    cond: &Yaml,
+    cond: & Yaml,
     cont: &Yaml,
-    dictionary: &DictVariables,
+    dictionary: & DictVariables,
     macros: &Macros,
 ) -> (PassageElem, DictVariables, Macros) {
     let cond = Gate::from(cond.as_str().unwrap(), dictionary, macros);

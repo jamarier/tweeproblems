@@ -125,7 +125,7 @@ impl Expression {
                     ">=" => operator2(geq_expression, stack),
 
                     // macros and variables
-                    _ => match macros.get(current) {
+                    _ => match macros.macros.get(current) {
                         Some(f) => {
                             Expression::inject(f, stack, macros);
                         }
