@@ -1,6 +1,8 @@
 ---
 title: Agrupación de resistencias
-
+paths: ../macros
+macros: macros-TEn.yaml
+  
 passages:
   - pass:
       text: |
