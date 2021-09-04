@@ -1,0 +1,47 @@
+::StoryTitle
+
+Problems with math equations
+
+:: StoryData
+{
+    "ifid": "c096ca18-1b13-4f3c-bb5a-73afe57765db"
+}
+
+:: UserScripts [script]
+
+const lockId = LoadScreen.lock();
+importScripts([
+	"https://polyfill.io/v3/polyfill.min.js?features=es6",
+	"https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+])
+	.catch(err => console.error(`MathJax load error: ${err}`))
+	.then(() => {
+		$(document)
+			.on(':passageinit', () => MathJax.typesetClear([document.querySelector('#story .passage')]))
+			.on(':passagerender', ev => {
+				MathJax.startup.promise = MathJax.startup.promise
+					.then(() => MathJax.typesetPromise(ev.content))
+					.catch(err => console.error(`MathJax typeset error: ${err}`));
+			});
+		LoadScreen.unlock(lockId);
+	});
+
+:: Start
+
+Start
+
+"""\( R2 =  \frac{R1}{1}  = 1 \)"""
+
+<nowiki>\( R2 =  \frac{R1}{1}  = 1 \)</nowiki>
+
+[[ Next -> Chapter-1 ]]
+
+:: Chapter-1
+
+Chapter-1
+
+"""\( R2 =  \frac{R1}{1}  = 1 \)"""
+
+<nowiki>\( R2 =  \frac{R1}{1}  = 1 \)</nowiki>
+
+[[Again -> Start]] 
