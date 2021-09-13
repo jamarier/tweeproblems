@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>reveal.js</title>
+
+		<link rel="stylesheet" href="dist/reset.css">
+		<link rel="stylesheet" href="dist/reveal.css">
+		<link rel="stylesheet" href="dist/theme/black.css">
+
+		<!-- Theme used for syntax highlighted code -->
+		<link rel="stylesheet" href="plugin/highlight/monokai.css">
+
+    <style>
+      .scrollable-slide {
+          height: 700px;
+          overflow-y: auto !important;
+      }
+      ::-webkit-scrollbar {
+          width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+          -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+      }
+      ::-webkit-scrollbar-thumb {
+        background-color: #333;
+      }
+      ::-webkit-scrollbar-corner {
+        background-color: #333;
+      }
+    </style>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section>Slide 1</section>
+				<section>Slide 2
+          <div>1 Some text I need to write to see what happens with big texts.</div> 
+          <div>2 Some text I need to write to see what happens with big texts.</div> 
+          <div>3 Some text I need to write to see what happens with big texts.</div> 
+          <div>4 Some text I need to write to see what happens with big texts.</div> 
+          <div>5 Some text I need to write to see what happens with big texts.</div> 
+          <div>6 Some text I need to write to see what happens with big texts.</div> 
+          <div>7 Some text I need to write to see what happens with big texts.</div> 
+          <div>8 Some text I need to write to see what happens with big texts.</div> 
+          <div>9 Some text I need to write to see what happens with big texts.</div> 
+          <div>10 Some text I need to write to see what happens with big texts.</div> 
+          <div>11 Some text I need to write to see what happens with big texts.</div> 
+          <div>12 Some text I need to write to see what happens with big texts.</div> 
+          <div>13 Some text I need to write to see what happens with big texts.</div> 
+          <div>14 Some text I need to write to see what happens with big texts.</div> 
+          <div>15 Some text I need to write to see what happens with big texts.</div> 
+          <div>16 Some text I need to write to see what happens with big texts.</div> 
+          <div>17 Some text I need to write to see what happens with big texts.</div> 
+          <div>18 Some text I need to write to see what happens with big texts.</div> 
+          <div>19 Some text I need to write to see what happens with big texts.</div> 
+          <div>20 Some text I need to write to see what happens with big texts.</div> 
+
+
+        </section>
+			</div>
+		</div>
+
+		<script src="dist/reveal.js"></script>
+		<script src="plugin/notes/notes.js"></script>
+		<script src="plugin/markdown/markdown.js"></script>
+		<script src="plugin/highlight/highlight.js"></script>
+		<script>
+			// More info about initialization & config:
+			// - https://revealjs.com/initialization/
+			// - https://revealjs.com/config/
+			Reveal.initialize({
+				hash: true,
+
+				// Learn about plugins: https://revealjs.com/plugins/
+				plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ]
+			});
+		</script>
+    <script>
+      function resetSlideScrolling(slide) {
+        slide.classList.remove('scrollable-slide');
+      }
+
+      function handleSlideScrolling(slide) {
+        if (slide.scrollHeight >= 700) {
+          slide.classList.add('scrollable-slide');
+        }
+      }
+
+      Reveal.addEventListener('ready', function (event) {
+          handleSlideScrolling(event.currentSlide);
+      });
+
+      Reveal.addEventListener('slidechanged', function (event) {
+          if (event.previousSlide) {
+              resetSlideScrolling(event.previousSlide);
+          }
+          handleSlideScrolling(event.currentSlide);
+      });
+    </script>
+	</body>
+</html>
