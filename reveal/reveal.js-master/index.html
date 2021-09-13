@@ -35,7 +35,10 @@
 	<body>
 		<div class="reveal">
 			<div class="slides">
-				<section>Slide 1</section>
+				<section id="slide1">Slide 1
+
+          <a href="#/slide3">Last</a>
+        </section>
 				<section>Slide 2
           <div>1 Some text I need to write to see what happens with big texts.</div> 
           <div>2 Some text I need to write to see what happens with big texts.</div> 
@@ -57,8 +60,11 @@
           <div>18 Some text I need to write to see what happens with big texts.</div> 
           <div>19 Some text I need to write to see what happens with big texts.</div> 
           <div>20 Some text I need to write to see what happens with big texts.</div> 
-
-
+        </section>
+        <section id="slide3">
+          Slide 3
+          This is the third slide
+          <a href="#/slide1">Start again</a>
         </section>
 			</div>
 		</div>
@@ -73,6 +79,15 @@
 			// - https://revealjs.com/config/
 			Reveal.initialize({
 				hash: true,
+        progress: false,
+        controls: false,
+        keyboard: false,
+        // Transition style
+        transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+        // Transition speed
+        transitionSpeed: 'default', // default/fast/slow
+
 
 				// Learn about plugins: https://revealjs.com/plugins/
 				plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ]
