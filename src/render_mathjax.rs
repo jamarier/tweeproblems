@@ -39,7 +39,7 @@ importScripts([
 
 ",
             exercise.title,
-            Uuid::new_v4()
+            exercise.uuid,
         );
 
         output

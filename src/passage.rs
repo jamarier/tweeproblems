@@ -444,7 +444,7 @@ impl PassageTree {
         // end of render
         if self.is_endnode() {
             output += &renderer.begin_choices("");
-            output += &renderer.link("Este es el final del problema. Volver al inicio", "Start");
+            output += &renderer.link("Este es el final del problema.", "Start");
             output += &renderer.end_choices("");
             output += &renderer.end_passage(&current_link.to_string());
             return output;

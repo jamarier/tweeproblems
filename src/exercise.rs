@@ -1,16 +1,18 @@
 use anyhow::{bail, Result};
 use std::fs;
 use std::path::Path;
+use uuid::Uuid;
 use yaml_rust::YamlLoader;
 
 use crate::expression::DictVariables;
 use crate::macros::Macros;
-use crate::passage::{is_macros, PassageTree, PassageTitle};
+use crate::passage::{is_macros, PassageTitle, PassageTree};
 use crate::render::Render;
 
 #[derive(Clone)]
 pub struct Exercise {
     pub title: String,
+    pub uuid: Uuid,
     pub passage_tree: PassageTree,
 }
 
@@ -37,7 +39,6 @@ impl Exercise {
 
         let mut passage_trees = PassageTree::from_yaml(&doc["passages"], &variables, &macros);
 
-
         /*
         println!("\npassageTree: {:?}", passage_trees);
         for it in &passage_trees {
@@ -49,8 +50,11 @@ impl Exercise {
             bail!("\nThe document in file {:?} doesn't start with an passage (it starts with alternative or concurrent group)", file);
         }
 
+        let uuid = Uuid::new_v4();
+
         Ok(Exercise {
             title,
+            uuid,
             passage_tree: passage_trees.pop().unwrap(),
         })
     }
@@ -61,7 +65,7 @@ impl Exercise {
 
         output += &renderer.begin_exercise(self);
 
-        output += &self.passage_tree.render(renderer, "", &passage_title );
+        output += &self.passage_tree.render(renderer, "", &passage_title);
 
         output += &renderer.end_exercise(self);
         output

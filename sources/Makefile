@@ -3,8 +3,8 @@ originales_twp=$(shell ls *.twp)
 originales_tw=$(shell ls mathjax*.tw)
 .PHONY: clean
 
-%.html: %.yaml 
-	cargo run -- $< . 
+../reveal/%.html: %.yaml ../target/debug/tweeproblems
+	cargo run -- $< ../reveal  
 
 #%.tw: %.yaml ../src/*.rs
 #	cargo run -- $< ../reveal

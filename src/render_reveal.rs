@@ -1,3 +1,4 @@
+use cityhash::cityhash_1_1_1::city_hash_64;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::path::{Path, PathBuf};
@@ -12,6 +13,12 @@ pub struct Reveal {
 impl Reveal {
     pub fn new() -> Self {
         Self { eqnumber: 0 }
+    }
+
+    fn hash(&self, input: &str) -> String {
+        let hash: u64 = city_hash_64(input.as_bytes());
+
+        format!("section-{:x}", hash)
     }
 
     fn display_eq(&mut self, input: &str) -> String {
@@ -105,6 +112,7 @@ impl Render for Reveal {
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
         <title>{}</title>
+        <script>var uuid ="{}"</script>
 
         <link rel="stylesheet" href="dist/reset.css">
         <link rel="stylesheet" href="dist/reveal.css">
@@ -149,7 +157,8 @@ impl Render for Reveal {
         <div class="reveal">
             <div class="slides">
 "#,
-            exercise.title
+            exercise.title,
+            exercise.uuid,
         );
 
         output
@@ -168,7 +177,7 @@ impl Render for Reveal {
                 hash: true,
                 progress: false,
                 controls: false,
-                //keyboard: false,
+                keyboard: false,
                 // Transition style
                 transition: 'slide', // none/fade/slide/convex/concave/zoom
 
@@ -211,15 +220,14 @@ impl Render for Reveal {
 </html>
 "#,
         )
-
     }
 
     fn begin_passage(&self, id: &str) -> String {
-        format!("\n<section id=\"{}\">\n", id)
+        format!("\n<section id=\"{}\">\n", self.hash(id))
     }
 
     fn end_passage(&self, id: &str) -> String {
-        format!("<!-- {} --></section>\n", id)
+        format!("<!-- {} --></section>\n", self.hash(id))
     }
 
     fn text(&mut self, text: &str) -> String {
@@ -228,7 +236,7 @@ impl Render for Reveal {
 
         let paragraphs: Vec<&str> = text.split('\n').collect();
         for line in paragraphs {
-            let line = line.trim();
+            let mut line = line.trim().to_string();
 
             // empty line
             if line.is_empty() {
@@ -239,24 +247,14 @@ impl Render for Reveal {
                 continue;
             }
 
-            // display eq
-            if line.starts_with("[[[ ") && line.ends_with(" ]]]") {
-                if in_paragraph {
-                    output += "\n  </p>\n\n";
-                    in_paragraph = false;
-                }
-                // TODO: equation
-                output += &self.display_eq(line);
-
-                continue;
-            }
-
             // normal line
             if !in_paragraph {
                 output += "  <p>\n    ";
                 in_paragraph = true;
             }
-            output = output + &self.inline_eq(line) + " ";
+            line = self.display_eq(&line);
+            line = self.inline_eq(&line);
+            output = output + &line + " ";
         }
 
         if in_paragraph {
@@ -267,7 +265,11 @@ impl Render for Reveal {
     }
 
     fn link(&self, text: &str, target: &str) -> String {
-        format!("  <p><a href=\"#/{}\">{}</a></p>\n\n", target, text)
+        format!(
+            "  <p><a href=\"#/{}\">{}</a></p>\n\n",
+            self.hash(target),
+            text
+        )
     }
 
     fn begin_choices(&self, text: &str) -> String {
@@ -278,11 +280,19 @@ impl Render for Reveal {
         output
     }
 
+    fn end_choices(&self, _text: &str) -> String {
+        let mut output = String::new();
+        output += "  <hr/>\n\n <div>";
+        output += &format!("  <p style=\"text-align:right\"><a href=\"#/{}\">Volver al inicio</a></p>\n\n",
+                           self.hash("Start"));
+        output
+    }
+
     fn begin_option(&self, _text: &str, target: &str) -> String {
-        format!("  <div> <!-- Option {} -->\n",target)
+        format!("  <div> <!-- Option {} -->\n", self.hash(target))
     }
 
     fn end_option(&self, id: &str) -> String {
-        format!("  </div> <!-- EndOption {} -->\n\n", id)
+        format!("  </div> <!-- EndOption {} -->\n\n", self.hash(id))
     }
 }
