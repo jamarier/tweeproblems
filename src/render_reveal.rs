@@ -216,6 +216,17 @@ impl Render for Reveal {
                 handleSlideScrolling(event.currentSlide);
                 });
         </script>
+        <script>
+            // event listener
+            document.addEventListener(`click`, e => {
+                const origin = e.target.closest("a");
+  
+                if (origin) {
+                    console.log(`UUID ${uuid}`);
+                    console.log(`You clicked ${origin.href}`);
+                }
+            });
+        </script>
     </body>
 </html>
 "#,
