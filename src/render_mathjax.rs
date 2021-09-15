@@ -49,19 +49,19 @@ importScripts([
         format!(":: {}\n\n", id)
     }
 
-    fn text(&mut self, text:&str) -> String {
+    fn text(&mut self, text: &str) -> String {
         text.to_string()
     }
 
     fn link(&self, text: &str, target: &str) -> String {
-       format!("\n[[ {} -> {} ]]\n\n",text,target)
+        format!("\n[[ {} -> {} ]]\n\n", text, target)
     }
 
     fn begin_choices(&self, text: &str) -> String {
         text.to_string()
     }
 
-    fn begin_option(&self, text: &str, target: &str) -> String {
+    fn begin_option(&self, _text: &str, _target: &str) -> String {
         String::new()
     }
 }

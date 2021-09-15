@@ -30,7 +30,7 @@ impl Reveal {
         // it is a cursor/offset in line
         let mut it: usize = 0;
 
-        for cap in RE_DISPLAY.captures_iter(&input) {
+        for cap in RE_DISPLAY.captures_iter(input) {
             // pass everythin before interpolation
             let m = cap.get(0).unwrap();
             output += &input[it..m.start()];
@@ -66,7 +66,7 @@ impl Reveal {
         // it is a cursor/offset in line
         let mut it: usize = 0;
 
-        for cap in RE_DISPLAY.captures_iter(&input) {
+        for cap in RE_DISPLAY.captures_iter(input) {
             // pass everythin before interpolation
             let m = cap.get(0).unwrap();
             output += &input[it..m.start()];
@@ -156,7 +156,7 @@ impl Render for Reveal {
     }
 
     fn end_exercise(&self, _exercise: &Exercise) -> String {
-        let output = String::from(
+        String::from(
             r#"
             </div>
         </div>
@@ -210,9 +210,8 @@ impl Render for Reveal {
     </body>
 </html>
 "#,
-        );
+        )
 
-        output
     }
 
     fn begin_passage(&self, id: &str) -> String {
@@ -227,12 +226,12 @@ impl Render for Reveal {
         let mut output = String::new();
         let mut in_paragraph = false;
 
-        let paragraphs: Vec<&str> = text.split("\n").collect();
+        let paragraphs: Vec<&str> = text.split('\n').collect();
         for line in paragraphs {
             let line = line.trim();
 
             // empty line
-            if line == "" {
+            if line.is_empty() {
                 if in_paragraph {
                     output += "\n  </p>\n\n";
                     in_paragraph = false;
@@ -247,7 +246,7 @@ impl Render for Reveal {
                     in_paragraph = false;
                 }
                 // TODO: equation
-                output += &self.display_eq(&line);
+                output += &self.display_eq(line);
 
                 continue;
             }
@@ -257,12 +256,11 @@ impl Render for Reveal {
                 output += "  <p>\n    ";
                 in_paragraph = true;
             }
-            output = output + &self.inline_eq(&line) + " ";
+            output = output + &self.inline_eq(line) + " ";
         }
 
         if in_paragraph {
             output += "\n  </p>\n\n";
-            in_paragraph = true;
         }
 
         output
@@ -280,7 +278,7 @@ impl Render for Reveal {
         output
     }
 
-    fn begin_option(&self, text: &str, target: &str) -> String {
+    fn begin_option(&self, _text: &str, target: &str) -> String {
         format!("  <div> <!-- Option {} -->\n",target)
     }
 
