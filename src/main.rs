@@ -1,14 +1,22 @@
 use anyhow::{bail, Result};
 use clap::{App, Arg};
 use std::fs::write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
+mod exercise;
 mod expression;
 mod macros;
 mod magnitude;
 mod passage;
 
-use crate::passage::Exercise;
+mod render;
+mod render_mathjax;
+mod render_reveal;
+
+use crate::exercise::Exercise;
+use crate::render::Render;
+use crate::render_mathjax::MathJax;
+use crate::render_reveal::Reveal;
 
 fn main() -> Result<()> {
     let args = App::new("TwineProblems")
@@ -22,12 +30,27 @@ fn main() -> Result<()> {
                 .index(1),
         )
         .arg(
+            Arg::with_name("OUTPUTDIR")
+                .help("Output directory")
+                .required(true)
+                .index(2),
+        )
+        .arg(
             Arg::with_name("paths")
                 .help("Paths to look for sources and macros files")
                 .short("p")
                 .long("path")
                 .takes_value(true)
                 .multiple(true),
+        )
+        .arg(
+            Arg::with_name("render")
+                .help("What render use")
+                .short("r")
+                .long("render")
+                .possible_values(&["reveal"])
+                .takes_value(true)
+                .default_value("reveal"),
         )
         .get_matches();
 
@@ -37,16 +60,26 @@ fn main() -> Result<()> {
     }
     paths.insert(0, String::from("."));
 
+    let mut reveal;
+    let renderer: &mut dyn Render = match args.value_of("render").unwrap() {
+        "reveal" => {
+            reveal = Reveal::new();
+            &mut reveal
+        }
+        _ => panic!("unknown"),
+    };
+
     let input_file = check_input_file(Path::new(args.value_of("INPUT").unwrap()))?;
     let input_file = macros::locate_file(input_file, &paths)?;
-    let output_file = generate_output_filename(&input_file);
+    let output_file = renderer
+        .generate_output_filename(Path::new(args.value_of("OUTPUTDIR").unwrap()), &input_file);
 
     println!("input file: {:?}", input_file);
     println!("output file: {:?}", output_file);
 
     let exercise = Exercise::load_exercise(&input_file, paths)?;
 
-    let render = exercise.render();
+    let render = exercise.render(renderer);
 
     write(output_file, render)?;
 
@@ -72,11 +105,4 @@ fn check_input_file(input: &Path) -> Result<&Path> {
     */
 
     Ok(input)
-}
-
-fn generate_output_filename(input: &Path) -> PathBuf {
-    let mut output = PathBuf::from(input);
-    output.set_extension("tw");
-
-    output
 }

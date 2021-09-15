@@ -1,0 +1,32 @@
+---
+title: Testing multiparagraph 
+
+passages:
+  - pass:
+      text: |
+        Text with multiples lines
+        of text. This is a paragraph.
+
+        Start second paragraph. Text
+
+            {{; 1 2 3 + + }}
+
+        {{; 1 2 3 + + }}    
+
+        Forth paragraph with inline formulas {{; 1ohm 2ohm 3ohm + + }}
+        
+        Fifth
+        Fifth paragraph with inline formulas {{; 1ohm 2ohm 3ohm + + }} some post text
+        Fifth paragraph with inline formulas {{; 1ohm 2ohm 3ohm + + }} some post test
+      post_bad:
+        - Bad
+        - Wrong
+        - No
+
+  - pass:
+      text: |
+        almost finished
+
+  - pass:
+      text: |
+        This is the end

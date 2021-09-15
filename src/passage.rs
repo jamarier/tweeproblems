@@ -1,18 +1,15 @@
 // Passage generation
 
-use anyhow::{bail, Result};
 use lazy_static::lazy_static;
 use rand::seq::SliceRandom;
 use regex::Regex;
 use std::fmt;
-use std::fs;
-use std::path::Path;
-use uuid::Uuid;
 use yaml_rust::yaml::Hash;
-use yaml_rust::{Yaml, YamlLoader};
+use yaml_rust::Yaml;
 
 use crate::expression::{DictVariables, Expression};
 use crate::macros::Macros;
+use crate::render::Render;
 
 // Gate: info about an option
 #[derive(Debug, Clone)]
@@ -82,31 +79,47 @@ impl Gate {
 
     fn passage_note(
         &self,
+        renderer: &mut dyn Render,
         current_link: &PassageTitle,
         msg: &str,
         output_link: &PassageTitle,
     ) -> String {
-        format!(
-            "\n:: {}\n\n{}\n\n[[ {} -> {} ]]\n\n\n",
-            current_link, self.note, msg, output_link
-        )
+        let mut output = String::new();
+
+        output += &renderer.begin_passage(&current_link.to_string());
+        output += &renderer.text(&self.note);
+        output += &renderer.link(msg, &output_link.to_string());
+        output += &renderer.end_passage(&current_link.to_string());
+
+        output
     }
 
     fn passage_bad_note(
         &self,
+        renderer: &mut dyn Render,
         current_link: &PassageTitle,
         msg: &str,
         output_link: &PassageTitle,
     ) -> String {
-        format!(
-            "\n:: {}\n\n''Opción errónea''\n\n{}\n\n[[ {} -> {} ]]\n\n\n",
-            current_link, self.note, msg, output_link
-        )
+        let mut output = String::new();
+
+        output += &renderer.begin_passage(&current_link.to_string());
+        output += &renderer.text("Opción errónea");
+        output += &renderer.text(&self.note);
+        output += &renderer.link(msg, &output_link.to_string());
+        output += &renderer.end_passage(&current_link.to_string());
+
+        output
     }
 
-    fn passage_choice(&self, next_link: &PassageTitle) -> String {
-        // TODO I18N
-        format!("[[ Opción: -> {} ]]\n\n{}\n\n", next_link, self.text)
+    fn passage_choice(&self, renderer: &mut dyn Render, next_link: &PassageTitle) -> String {
+        let mut output = String::new();
+        output += &renderer.begin_option("", &next_link.to_string());
+        output += &renderer.link("Opción:", &next_link.to_string());
+        output += &renderer.text(&self.text);
+        output += &renderer.end_option(&next_link.to_string());
+
+        output
     }
 
     fn has_note(&self) -> bool {
@@ -266,9 +279,9 @@ fn is_displaymode(line: &str) -> bool {
 
 fn marker_math(displaymode: bool) -> (&'static str, &'static str) {
     if displaymode {
-        ("\"\"\"\\[ ", " \\]\"\"\"")
+        ("[[[ ", " ]]]")
     } else {
-        ("\"\"\"\\( ", " \\)\"\"\"")
+        ("((( ", " )))")
     }
 }
 
@@ -342,11 +355,17 @@ impl PassageElem {
 }
 
 #[derive(Debug, Clone)]
-struct PassageTree(Passage, Vec<PassageTree>);
+pub struct PassageTree(Passage, Vec<PassageTree>);
 
 impl PassageTree {
     fn new(passage: Passage) -> Self {
         PassageTree(passage, vec![])
+    }
+
+    pub fn from_yaml(yaml: &Yaml, dictionary: &DictVariables, macros: &Macros) -> Vec<Self> {
+        let passages = convert_yaml(yaml, dictionary, macros);
+
+        PassageTree::from(&passages.0)
     }
 
     fn from(elem: &PassageElem) -> Vec<Self> {
@@ -405,19 +424,29 @@ impl PassageTree {
         true
     }
 
-    fn render(&self, acumulated_text: &str, current_link: &PassageTitle) -> String {
-        let mut output = format!(":: {}\n\n", current_link);
+    pub fn render(
+        &self,
+        renderer: &mut dyn Render,
+        acumulated_text: &str,
+        current_link: &PassageTitle,
+    ) -> String {
+        let mut output: String = renderer.begin_passage(&current_link.to_string());
         let mut suboutput = String::new();
 
-        let mut accumulated_text = acumulated_text.to_string();
-        accumulated_text = accumulated_text + &self.0.text.text + "\n";
-        accumulated_text = accumulated_text + &self.0.text.follow + "\n";
+        let mut acumulated_text = acumulated_text.to_string();
+        acumulated_text = acumulated_text
+            + &renderer.text(&self.0.text.text)
+            + &renderer.text(&self.0.text.follow)
+            + "\n";
 
-        output += &accumulated_text;
+        output += &acumulated_text;
 
         // end of render
         if self.is_endnode() {
-            output += "\n[[ Este es el final del problema. Volver al inicio -> Start ]]\n\n";
+            output += &renderer.begin_choices("");
+            output += &renderer.link("Este es el final del problema. Volver al inicio", "Start");
+            output += &renderer.end_choices("");
+            output += &renderer.end_passage(&current_link.to_string());
             return output;
         }
 
@@ -435,9 +464,10 @@ impl PassageTree {
         }
 
         for bad_gate in bad_gates {
-            output_gates.push(bad_gate.passage_choice(&sub_link));
+            output_gates.push(bad_gate.passage_choice(renderer, &sub_link));
             // TODO I18N
-            suboutput += &bad_gate.passage_bad_note(&sub_link, "Volver a intentarlo", current_link);
+            suboutput +=
+                &bad_gate.passage_bad_note(renderer, &sub_link, "Volver a intentarlo", current_link);
 
             sub_link.inc();
         }
@@ -448,15 +478,15 @@ impl PassageTree {
             if gate.is_empty() {
                 continue;
             }
-            output_gates.push(gate.passage_choice(&sub_link));
+            output_gates.push(gate.passage_choice(renderer, &sub_link));
             if gate.has_note() {
                 let temp_link = sub_link.clone();
                 sub_link.inc();
                 // I18N
-                suboutput += &gate.passage_note(&temp_link, "Continuar", &sub_link);
+                suboutput += &gate.passage_note(renderer, &temp_link, "Continuar", &sub_link);
             }
 
-            suboutput += &next.render(&accumulated_text, &sub_link);
+            suboutput += &next.render(renderer, &acumulated_text, &sub_link);
             sub_link.inc();
         }
 
@@ -464,14 +494,18 @@ impl PassageTree {
 
         if output_gates.len() > 1 {
             // TODO I18N
-            output += "Marque una opción que considere correcta (puede haber más de una)\n\n";
+            output += &renderer.begin_choices(
+                "Marque una opción que considere correcta (puede haber más de una)",
+            );
             output_gates.shuffle(&mut rand::thread_rng());
         } else {
             // TODO I18N
-            output += "Marque la opción indicada para continuar\n\n";
+            output += &renderer.begin_choices("Marque la opción indicada para continuar");
         }
         output += &output_gates.join("\n");
 
+        output += &renderer.end_choices("");
+        output += &renderer.end_passage(&current_link.to_string());
         output += &suboutput;
         output
     }
@@ -501,95 +535,6 @@ fn concatenate_tree(a: PassageTree, b: &[PassageTree]) -> PassageTree {
     }
 }
 
-pub struct Exercise {
-    title: String,
-    passage_tree: PassageTree,
-}
-
-impl Exercise {
-    pub fn load_exercise(file: &Path, paths: Vec<String>) -> Result<Exercise> {
-        let contents = fs::read_to_string(file).expect("Unable to read file");
-        let docs = YamlLoader::load_from_str(&contents).unwrap();
-        let doc = &docs[0];
-
-        let variables = DictVariables::new();
-
-        let mut macros = Macros::new();
-        macros.add_paths(vec![file.parent().unwrap().to_str().unwrap().to_string()]);
-        macros.add_paths(paths);
-
-        if let Some(paths) = is_macros("paths", doc) {
-            macros.add_paths(paths);
-        }
-        if let Some(macros_files) = is_macros("macros", doc) {
-            macros.include_macros(macros_files);
-        }
-
-        let title = doc["title"].as_str().unwrap().to_owned();
-
-        let passages = convert_yaml(&doc["passages"], &variables, &macros);
-
-        let mut passage_trees = PassageTree::from(&passages.0);
-
-        /*
-        println!("\npassages: {:?}", passages);
-        println!("\npassageTree: {:?}", passage_trees);
-        for it in &passage_trees {
-            println!("\npassageTree: {}", it);
-        }
-        */
-
-        if passage_trees.len() != 1 {
-            bail!("\nThe document in file {:?} doesn't start with an passage (it starts with alternative or concurrent group)", file);
-        }
-
-        Ok(Exercise {
-            title,
-            passage_tree: passage_trees.pop().unwrap(),
-        })
-    }
-
-    pub fn render(&self) -> String {
-        let mut output = String::new();
-        let passage_title = PassageTitle::new();
-
-        output += &preface(&self.title);
-        output += &self.passage_tree.render(&String::new(), &passage_title);
-
-        output
-    }
-}
-
-fn preface(title: &str) -> String {
-    let output = format!(
-        "::StoryTitle
-
-{}
-
-:: StoryData
-{{
-    \"ifid\": \"{}\"
-}}
-
-:: UserScripts [script]
-
-/* Import the mathjax library. */
-importScripts([
-    \"https://polyfill.io/v3/polyfill.min.js?features=es6\",
-    \"https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js\"
-]).then(() => {{
-        $(document).on(':passageinit', () => window.location.reload(false) );
-    }})
-    .catch(err => console.error(`MathJax load error: ${{err}}`));
-
-",
-        title,
-        Uuid::new_v4()
-    );
-
-    output
-}
-
 fn main_key(hash: &Hash) -> Option<&str> {
     if hash.len() == 1 {
         return Some(hash.front().unwrap().0.as_str().unwrap());
@@ -602,7 +547,7 @@ fn main_key(hash: &Hash) -> Option<&str> {
     None
 }
 
-fn is_macros(tag: &'static str, elem: &Yaml) -> Option<Vec<String>> {
+pub fn is_macros(tag: &'static str, elem: &Yaml) -> Option<Vec<String>> {
     match &elem[tag] {
         Yaml::String(s) => Some(vec![s.to_string()]),
         Yaml::Array(a) => {

@@ -37,6 +37,10 @@
 			<div class="slides">
 				<section id="slide1">Slide 1
 
+          display: $$ 1 + 1 $$ fin display
+
+          inline: $ 1+3 $ fin inline
+
           <div><a href="#/slide2">Next</a></div>
           <a href="#/slide3">Last</a>
         </section>
@@ -72,9 +76,7 @@
 		</div>
 
 		<script src="dist/reveal.js"></script>
-		<script src="plugin/notes/notes.js"></script>
-		<script src="plugin/markdown/markdown.js"></script>
-		<script src="plugin/highlight/highlight.js"></script>
+    <script src="plugin/math/math.js"></script>
 		<script>
 			// More info about initialization & config:
 			// - https://revealjs.com/initialization/
@@ -82,7 +84,7 @@
 			Reveal.initialize({
 				hash: true,
         progress: false,
-        controls: false,
+        //controls: false,
         keyboard: false,
         // Transition style
         transition: 'slide', // none/fade/slide/convex/concave/zoom
@@ -90,9 +92,13 @@
         // Transition speed
         transitionSpeed: 'default', // default/fast/slow
 
+        math: {
+          mathjax: 'https://cdn.jsdelivr.net/gh/mathjax/mathjax@2/MathJax.js',
+          config: 'TeX-AMS_HTML-full',
+        },
 
 				// Learn about plugins: https://revealjs.com/plugins/
-				plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ]
+				plugins: [ RevealMath ]
 			});
 		</script>
     <script>
